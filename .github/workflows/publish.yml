@@ -1,0 +1,16 @@
+name: Publish
+# Manual only. A Go module is published by pushing a version tag, which this workflow never does: it only builds and
+# tests the module, without any credential.
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go build ./...
+      - run: go test -race ./...

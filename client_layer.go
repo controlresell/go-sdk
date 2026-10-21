@@ -259,6 +259,10 @@ type ConversationListParams struct {
 	Unread *bool
 	// AccountID keeps the conversations of one marketplace account; empty for all.
 	AccountID string
+	// From keeps the conversations whose last message is at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the conversations whose last message is before this instant (exclusive); zero for no bound.
+	To time.Time
 }
 
 // List reads one page of conversations.
@@ -276,6 +280,12 @@ func (s *ConversationsService) List(ctx context.Context, params ConversationList
 	if params.AccountID != "" {
 		request = request.AccountId(params.AccountID)
 	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
+	}
 	value, response, err := request.Execute()
 	return result(value, response, err)
 }
@@ -286,14 +296,29 @@ func (s *ConversationsService) Get(ctx context.Context, id string) (*Conversatio
 	return result(value, response, err)
 }
 
+// MessageListParams are the parameters of a message list.
+type MessageListParams struct {
+	ListParams
+	// From keeps the messages created at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the messages created before this instant (exclusive); zero for no bound.
+	To time.Time
+}
+
 // Messages reads one page of the messages of a conversation, oldest first.
-func (s *ConversationsService) Messages(ctx context.Context, id string, params ListParams) (*MessagePage, error) {
+func (s *ConversationsService) Messages(ctx context.Context, id string, params MessageListParams) (*MessagePage, error) {
 	request := s.api.ConversationsAPI.ListConversationMessages(ctx, id)
 	if params.Limit > 0 {
 		request = request.Limit(params.Limit)
 	}
 	if params.Cursor != "" {
 		request = request.Cursor(params.Cursor)
+	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
 	}
 	value, response, err := request.Execute()
 	return result(value, response, err)
@@ -324,10 +349,12 @@ func (s *ConversationsService) All(ctx context.Context, params ConversationListP
 	})
 }
 
-// AllMessages yields every message of a conversation, page after page.
-func (s *ConversationsService) AllMessages(ctx context.Context, id string, limit int32) iter.Seq2[Message, error] {
+// AllMessages yields every message of a conversation, page after page, with the same period (params.Cursor is ignored).
+func (s *ConversationsService) AllMessages(ctx context.Context, id string, params MessageListParams) iter.Seq2[Message, error] {
 	return paginate(func(cursor string) ([]Message, *string, error) {
-		page, err := s.Messages(ctx, id, ListParams{Limit: limit, Cursor: cursor})
+		query := params
+		query.Cursor = cursor
+		page, err := s.Messages(ctx, id, query)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -391,6 +418,33 @@ func (s *OrdersService) Get(ctx context.Context, id string) (*Order, error) {
 func (s *OrdersService) Labels(ctx context.Context, id string) (*OrderLabelPage, error) {
 	value, response, err := s.api.OrdersAPI.ListOrderLabels(ctx, id).Execute()
 	return result(value, response, err)
+}
+
+// LabelsToShip reads one page of the shipping labels still to ship over all the orders, the oldest order first; each
+// label names its order (OrderId).
+func (s *OrdersService) LabelsToShip(ctx context.Context, params ListParams) (*OrderLabelPage, error) {
+	request := s.api.OrdersAPI.ListLabelsToShip(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllLabelsToShip yields every label still to ship, page after page (params.Cursor is ignored).
+func (s *OrdersService) AllLabelsToShip(ctx context.Context, params ListParams) iter.Seq2[OrderLabel, error] {
+	return paginate(func(cursor string) ([]OrderLabel, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.LabelsToShip(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
 }
 
 // All yields every order, page after page, with the same filters (params.Cursor is ignored).

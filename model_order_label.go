@@ -22,6 +22,7 @@ var _ MappedNullable = &OrderLabel{}
 // OrderLabel struct for OrderLabel
 type OrderLabel struct {
 	Id string `json:"id"`
+	OrderId string `json:"orderId"`
 	Carrier NullableString `json:"carrier,omitempty"`
 	Url NullableString `json:"url,omitempty"`
 	OriginalUrl NullableString `json:"originalUrl,omitempty"`
@@ -35,9 +36,10 @@ type _OrderLabel OrderLabel
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewOrderLabel(id string) *OrderLabel {
+func NewOrderLabel(id string, orderId string) *OrderLabel {
 	this := OrderLabel{}
 	this.Id = id
+	this.OrderId = orderId
 	return &this
 }
 
@@ -71,6 +73,30 @@ func (o *OrderLabel) GetIdOk() (*string, bool) {
 // SetId sets field value
 func (o *OrderLabel) SetId(v string) {
 	o.Id = v
+}
+
+// GetOrderId returns the OrderId field value
+func (o *OrderLabel) GetOrderId() string {
+	if o == nil {
+		var ret string
+		return ret
+	}
+
+	return o.OrderId
+}
+
+// GetOrderIdOk returns a tuple with the OrderId field value
+// and a boolean to check if the value has been set.
+func (o *OrderLabel) GetOrderIdOk() (*string, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return &o.OrderId, true
+}
+
+// SetOrderId sets field value
+func (o *OrderLabel) SetOrderId(v string) {
+	o.OrderId = v
 }
 
 // GetCarrier returns the Carrier field value if set, zero value otherwise (both if not set or set to explicit null).
@@ -252,6 +278,7 @@ func (o OrderLabel) MarshalJSON() ([]byte, error) {
 func (o OrderLabel) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	toSerialize["id"] = o.Id
+	toSerialize["orderId"] = o.OrderId
 	if o.Carrier.IsSet() {
 		toSerialize["carrier"] = o.Carrier.Get()
 	}
@@ -278,6 +305,7 @@ func (o *OrderLabel) UnmarshalJSON(data []byte) (err error) {
 	// that every required field exists as a key in the generic map.
 	requiredProperties := []string{
 		"id",
+		"orderId",
 	}
 
 	allProperties := make(map[string]interface{})
@@ -308,6 +336,7 @@ func (o *OrderLabel) UnmarshalJSON(data []byte) (err error) {
 
 	if err = json.Unmarshal(data, &additionalProperties); err == nil {
 		delete(additionalProperties, "id")
+		delete(additionalProperties, "orderId")
 		delete(additionalProperties, "carrier")
 		delete(additionalProperties, "url")
 		delete(additionalProperties, "originalUrl")

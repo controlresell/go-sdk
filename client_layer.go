@@ -195,7 +195,8 @@ func (s *ItemsService) Listings(ctx context.Context, id int64) (*ListingPage, er
 	return result(value, response, err)
 }
 
-// Create adds an item to the stock, without publishing it. opts may set the Idempotency-Key.
+// Create adds an item to the stock, without publishing it. opts may set the Idempotency-Key: to retry a Create yourself
+// (after a timeout, say), pass the same WithIdempotencyKey, or a second item is created.
 func (s *ItemsService) Create(ctx context.Context, body ItemCreateRequest, opts ...WriteOption) (*Item, error) {
 	value, response, err := s.api.ItemsAPI.CreateItem(ctx).ItemCreateRequest(body).IdempotencyKey(keyOf(opts)).Execute()
 	return result(value, response, err)

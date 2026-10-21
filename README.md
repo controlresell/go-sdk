@@ -13,6 +13,10 @@ for item, err := range client.Items.All(ctx, controlresell.ItemListParams{}) {
 	}
 	fmt.Println(item.Name)
 }
+
+// Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
+scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})
+message, err := client.Conversations.SendMessage(ctx, conversationID, controlresell.SendMessageRequest{Text: "Hello!"})
 ```
 
 Retries (rate limits, 502/503/504, network errors), `Idempotency-Key` on every `POST`, cursor pagination with range-over-func iterators and typed errors (`*NotFoundError`, `*RateLimitError`... all unwrapping to `*APIError`) are built in. The client is generated from the API's OpenAPI document (`scripts/generate.sh`; the generated files are listed in `.generated-files`).

@@ -192,6 +192,34 @@ func (s *ItemsService) Listings(ctx context.Context, id int64) (*ListingPage, er
 	return result(value, response, err)
 }
 
+// Delete removes an item from the stock; an item still online is refused (409 item_still_listed).
+func (s *ItemsService) Delete(ctx context.Context, id int64) error {
+	response, err := s.api.ItemsAPI.DeleteItem(ctx, id).Execute()
+	if err != nil {
+		return convert(response, err)
+	}
+	return nil
+}
+
+// Publish schedules the publication of an item on the given accounts. opts may set the Idempotency-Key.
+func (s *ItemsService) Publish(ctx context.Context, id int64, body PublishRequest, opts ...WriteOption) (*ScheduledAction, error) {
+	value, response, err := s.api.ItemsAPI.PublishItem(ctx, id).PublishRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
+// PriceDrop schedules a price drop of the item's listings. opts may set the Idempotency-Key.
+func (s *ItemsService) PriceDrop(ctx context.Context, id int64, body PriceDropRequest, opts ...WriteOption) (*ScheduledAction, error) {
+	value, response, err := s.api.ItemsAPI.DropItemPrice(ctx, id).PriceDropRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
+// Republish schedules the republication of an item (the zero RepublishRequest means every account it is listed on).
+// opts may set the Idempotency-Key.
+func (s *ItemsService) Republish(ctx context.Context, id int64, body RepublishRequest, opts ...WriteOption) (*ScheduledAction, error) {
+	value, response, err := s.api.ItemsAPI.RepublishItem(ctx, id).RepublishRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
 // All yields every item, page after page, with the same filters (params.Cursor is ignored).
 func (s *ItemsService) All(ctx context.Context, params ItemListParams) iter.Seq2[Item, error] {
 	return paginate(func(cursor string) ([]Item, *string, error) {
@@ -255,6 +283,18 @@ func (s *ConversationsService) Messages(ctx context.Context, id string, params L
 	return result(value, response, err)
 }
 
+// SendMessage sends a message to the buyer. opts may set the Idempotency-Key.
+func (s *ConversationsService) SendMessage(ctx context.Context, id string, body SendMessageRequest, opts ...WriteOption) (*Message, error) {
+	value, response, err := s.api.ConversationsAPI.SendMessage(ctx, id).SendMessageRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
+// SendOffer sends the buyer an offer. opts may set the Idempotency-Key.
+func (s *ConversationsService) SendOffer(ctx context.Context, id string, body SendOfferRequest, opts ...WriteOption) (*Message, error) {
+	value, response, err := s.api.ConversationsAPI.SendOffer(ctx, id).SendOfferRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
 // All yields every conversation, page after page, with the same filters (params.Cursor is ignored).
 func (s *ConversationsService) All(ctx context.Context, params ConversationListParams) iter.Seq2[Conversation, error] {
 	return paginate(func(cursor string) ([]Conversation, *string, error) {
@@ -277,6 +317,28 @@ func (s *ConversationsService) AllMessages(ctx context.Context, id string, limit
 		}
 		return page.Data, page.NextCursor.Get(), nil
 	})
+}
+
+// WriteOption configures a write call.
+type WriteOption func(*writeOptions)
+
+type writeOptions struct{ idempotencyKey string }
+
+// WithIdempotencyKey sets the Idempotency-Key of a write (a random one by default). The key is the same at every retry.
+func WithIdempotencyKey(key string) WriteOption {
+	return func(o *writeOptions) { o.idempotencyKey = key }
+}
+
+// keyOf returns the Idempotency-Key of a write: the caller's, else a random one chosen once, before the retries.
+func keyOf(opts []WriteOption) string {
+	var o writeOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+	if o.idempotencyKey != "" {
+		return o.idempotencyKey
+	}
+	return newKey()
 }
 
 func result[T any](value *T, response *http.Response, err error) (*T, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -248,5 +249,98 @@ func TestTheKeyIsReadFromTheEnvironment(t *testing.T) {
 	t.Setenv("CONTROLRESELL_API_KEY", "cr_test_env")
 	if _, err := controlresell.NewClient(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+const action = `{"itemId":7,"action":"PUBLISH","accountIds":[],"scheduledAt":"2026-10-21T10:00:00Z"}`
+const account = "3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10"
+
+func TestPublishPostsTheAccountsWithOneIdempotencyKeyAcrossRetries(t *testing.T) {
+	var paths, bodies []string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		paths, bodies = append(paths, r.URL.Path), append(bodies, string(raw))
+		if n < 2 {
+			reply(w, 503, envelope("idempotency_unavailable"))
+			return
+		}
+		reply(w, 202, action)
+	})
+	scheduled, err := c.Items.Publish(context.Background(), 7, controlresell.PublishRequest{AccountIds: []string{account}})
+	if err != nil || scheduled.ItemId != 7 {
+		t.Fatalf("%v %+v", err, scheduled)
+	}
+	if paths[1] != "/api/public/v1/items/7/publish" || !strings.Contains(bodies[1], account) {
+		t.Fatalf("%v %v", paths, bodies)
+	}
+	first := s.calls[0].header.Get(controlresell.IdempotencyKeyHeader)
+	if first == "" || s.calls[1].header.Get(controlresell.IdempotencyKeyHeader) != first || len(s.calls[1].header.Values(controlresell.IdempotencyKeyHeader)) != 1 {
+		t.Fatalf("keys: %v", s.calls)
+	}
+}
+
+func TestAWriteUsesTheIdempotencyKeyItIsGiven(t *testing.T) {
+	var path string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) { path = r.URL.Path; reply(w, 202, action) })
+	if _, err := c.Items.Republish(context.Background(), 7, controlresell.RepublishRequest{}, controlresell.WithIdempotencyKey("my-key")); err != nil {
+		t.Fatal(err)
+	}
+	if path != "/api/public/v1/items/7/republish" || s.calls[0].header.Get(controlresell.IdempotencyKeyHeader) != "my-key" {
+		t.Fatalf("%s %v", path, s.calls[0].header)
+	}
+}
+
+func TestPriceDropPostsToThePriceDropRoute(t *testing.T) {
+	var path, body string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		path, body = r.URL.Path, string(raw)
+		reply(w, 202, action)
+	})
+	if _, err := c.Items.PriceDrop(context.Background(), 7, controlresell.PriceDropRequest{Type: "PERCENT", Value: "10"}); err != nil {
+		t.Fatal(err)
+	}
+	if path != "/api/public/v1/items/7/price-drop" || !strings.Contains(body, `"PERCENT"`) {
+		t.Fatalf("%s %s", path, body)
+	}
+}
+
+func TestDeleteResolvesOn204AndReturnsATypedErrorOn409(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			w.WriteHeader(204)
+			return
+		}
+		reply(w, 409, envelope("item_still_listed"))
+	})
+	if err := c.Items.Delete(context.Background(), 7); err != nil || s.calls[0].method != "DELETE" {
+		t.Fatalf("%v", err)
+	}
+	var conflict *controlresell.ConflictError
+	var base *controlresell.APIError
+	err := c.Items.Delete(context.Background(), 7)
+	if !errors.As(err, &conflict) || !errors.As(err, &base) || base.Code != "item_still_listed" {
+		t.Fatalf("%v", err)
+	}
+}
+
+func TestSendMessageAndSendOfferPostToTheConversation(t *testing.T) {
+	message := fmt.Sprintf(`{"id":%q,"conversationId":%q,"author":"SELLER","type":"TEXT","status":"SENT","body":"hi","createdAt":"2026-10-21T10:00:00Z"}`, account, account)
+	var paths, bodies []string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		paths, bodies = append(paths, r.URL.Path), append(bodies, string(raw))
+		reply(w, 201, message)
+	})
+	ctx := context.Background()
+	if _, err := c.Conversations.SendMessage(ctx, account, controlresell.SendMessageRequest{Text: "hi"}); err != nil {
+		t.Fatal(err)
+	}
+	offer := controlresell.SendOfferRequest{Price: controlresell.Money{Amount: "12.50", Currency: "EUR"}}
+	if _, err := c.Conversations.SendOffer(ctx, account, offer); err != nil {
+		t.Fatal(err)
+	}
+	if paths[0] != "/api/public/v1/conversations/"+account+"/messages" || paths[1] != "/api/public/v1/conversations/"+account+"/offers" || !strings.Contains(bodies[1], "12.50") {
+		t.Fatalf("%v %v", paths, bodies)
 	}
 }

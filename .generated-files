@@ -20,5 +20,11 @@ model_message_page.go
 model_message.go
 model_money.go
 model_offer.go
+model_price_drop_request.go
+model_publish_request.go
+model_republish_request.go
+model_scheduled_action.go
+model_send_message_request.go
+model_send_offer_request.go
 response.go
 utils.go

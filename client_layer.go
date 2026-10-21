@@ -2,9 +2,7 @@ package controlresell
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"iter"
 	"net/http"
 	"os"
@@ -340,13 +338,7 @@ func keyOf(opts []WriteOption) string {
 	if o.idempotencyKey != "" {
 		return o.idempotencyKey
 	}
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		panic(err) // crypto/rand does not fail on a supported platform
-	}
-	b[6] = b[6]&0x0f | 0x40
-	b[8] = b[8]&0x3f | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+	return newKey()
 }
 
 func result[T any](value *T, response *http.Response, err error) (*T, error) {

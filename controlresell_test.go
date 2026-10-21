@@ -270,7 +270,7 @@ func TestPublishPostsTheAccountsWithOneIdempotencyKeyAcrossRetries(t *testing.T)
 	if err != nil || scheduled.ItemId != 7 {
 		t.Fatalf("%v %+v", err, scheduled)
 	}
-	if paths[1] != "/api/public/v1/items/7/publish" || !strings.Contains(bodies[1], account) {
+	if len(paths) != 2 || paths[1] != "/api/public/v1/items/7/publish" || bodies[0] != bodies[1] || !strings.Contains(bodies[1], account) {
 		t.Fatalf("%v %v", paths, bodies)
 	}
 	first := s.calls[0].header.Get(controlresell.IdempotencyKeyHeader)

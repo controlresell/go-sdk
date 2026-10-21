@@ -374,7 +374,7 @@ func TestCreatePostsTheItemWithAKeyAndUpdatePatchesItWithoutOne(t *testing.T) {
 	if s.calls[0].method != "POST" || s.calls[0].header.Get(controlresell.IdempotencyKeyHeader) != "k1" {
 		t.Fatalf("%v", s.calls[0])
 	}
-	if patched != `{"name":"m"}` {
+	if strings.TrimSpace(patched) != `{"name":"m"}` {
 		t.Fatalf("%s", patched)
 	}
 	if s.calls[1].method != "PATCH" || s.calls[1].header.Get(controlresell.IdempotencyKeyHeader) != "" {

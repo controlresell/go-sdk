@@ -464,6 +464,51 @@ func TestOrdersAllLabelsToShipFollowsTheCursorOnOrdersLabels(t *testing.T) {
 	}
 }
 
+const customer = `{"id":"3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10","firstName":%q,"lastName":"Doe","email":null,` +
+	`"address":{"country":"FR"},"createdAt":"2026-10-21T10:00:00Z"}`
+
+func TestCustomersAllFollowsTheCursorWithTheSameFilters(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			reply(w, 200, `{"data":[`+fmt.Sprintf(customer, "Ann")+`],"nextCursor":"c2"}`)
+			return
+		}
+		reply(w, 200, `{"data":[`+fmt.Sprintf(customer, "Bob")+`],"nextCursor":null}`)
+	})
+	params := controlresell.CustomerListParams{From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), AccountID: "acc"}
+	var names []string
+	for cu, err := range c.Customers.All(context.Background(), params) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, cu.FirstName)
+	}
+	if len(names) != 2 || names[0] != "Ann" || names[1] != "Bob" {
+		t.Fatalf("%v", names)
+	}
+	for _, call := range s.calls {
+		if !strings.Contains(call.query, "from=2026-10-01") || !strings.Contains(call.query, "accountId=acc") {
+			t.Fatalf("%s", call.query)
+		}
+	}
+	if strings.Contains(s.calls[0].query, "cursor") || !strings.Contains(s.calls[1].query, "cursor=c2") {
+		t.Fatalf("%s | %s", s.calls[0].query, s.calls[1].query)
+	}
+}
+
+func TestCustomersGetReadsOneCustomer(t *testing.T) {
+	var path string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		reply(w, 200, fmt.Sprintf(customer, "Ann"))
+	})
+	id := "3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10"
+	got, err := c.Customers.Get(context.Background(), id)
+	if err != nil || got.FirstName != "Ann" || path != "/api/public/v1/customers/"+id {
+		t.Fatalf("%v %v %s", got, err, path)
+	}
+}
+
 func TestConversationsMessagesSendTheFromAndToWindow(t *testing.T) {
 	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
 		reply(w, 200, `{"data":[],"nextCursor":null}`)

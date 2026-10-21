@@ -59,6 +59,8 @@ type Client struct {
 	Conversations *ConversationsService
 	// Orders are the seller's sales and purchases.
 	Orders *OrdersService
+	// Customers are the other parties of the seller's sales and purchases.
+	Customers *CustomersService
 	// API is the underlying generated client, configured with the key and the retries.
 	API *APIClient
 }
@@ -98,6 +100,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		Items:         &ItemsService{api},
 		Conversations: &ConversationsService{api},
 		Orders:        &OrdersService{api},
+		Customers:     &CustomersService{api},
 		API:           api,
 	}, nil
 }
@@ -450,6 +453,61 @@ func (s *OrdersService) AllLabelsToShip(ctx context.Context, params ListParams) 
 // All yields every order, page after page, with the same filters (params.Cursor is ignored).
 func (s *OrdersService) All(ctx context.Context, params OrderListParams) iter.Seq2[Order, error] {
 	return paginate(func(cursor string) ([]Order, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.List(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// CustomersService reads the other parties of the seller's sales and purchases (needs the customers:read scope).
+type CustomersService struct{ api *APIClient }
+
+// CustomerListParams are the parameters of a customer list.
+type CustomerListParams struct {
+	ListParams
+	// AccountID keeps the customers of an order on one marketplace account; empty for all.
+	AccountID string
+	// From keeps the customers created at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the customers created before this instant (exclusive); zero for no bound.
+	To time.Time
+}
+
+// List reads one page of customers, the most recently created first.
+func (s *CustomersService) List(ctx context.Context, params CustomerListParams) (*CustomerPage, error) {
+	request := s.api.CustomersAPI.ListCustomers(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.AccountID != "" {
+		request = request.AccountId(params.AccountID)
+	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// Get reads one customer by its identifier.
+func (s *CustomersService) Get(ctx context.Context, id string) (*Customer, error) {
+	value, response, err := s.api.CustomersAPI.GetCustomer(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// All yields every customer, page after page, with the same filters (params.Cursor is ignored).
+func (s *CustomersService) All(ctx context.Context, params CustomerListParams) iter.Seq2[Customer, error] {
+	return paginate(func(cursor string) ([]Customer, *string, error) {
 		page := params
 		page.Cursor = cursor
 		result, err := s.List(ctx, page)

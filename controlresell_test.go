@@ -438,3 +438,44 @@ func TestOrdersAllFollowsTheCursorWithTheSameFilters(t *testing.T) {
 		t.Fatalf("%s | %s", s.calls[0].query, s.calls[1].query)
 	}
 }
+
+func TestOrdersAllLabelsToShipFollowsTheCursorOnOrdersLabels(t *testing.T) {
+	var path string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			path = r.URL.Path
+			reply(w, 200, `{"data":[{"id":"l1","orderId":"o1"}],"nextCursor":"c2"}`)
+			return
+		}
+		reply(w, 200, `{"data":[{"id":"l2","orderId":"o2"}],"nextCursor":null}`)
+	})
+	var orders []string
+	for l, err := range c.Orders.AllLabelsToShip(context.Background(), controlresell.ListParams{Limit: 1}) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		orders = append(orders, l.OrderId)
+	}
+	if len(orders) != 2 || orders[0] != "o1" || orders[1] != "o2" {
+		t.Fatalf("%v", orders)
+	}
+	if path != "/api/public/v1/orders/labels" || !strings.Contains(s.calls[1].query, "cursor=c2") {
+		t.Fatalf("%v", s.calls)
+	}
+}
+
+func TestConversationsMessagesSendTheFromAndToWindow(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		reply(w, 200, `{"data":[],"nextCursor":null}`)
+	})
+	params := controlresell.MessageListParams{
+		From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC),
+		To:   time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
+	}
+	if _, err := c.Conversations.Messages(context.Background(), "3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10", params); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(s.calls[0].query, "from=2026-10-01") || !strings.Contains(s.calls[0].query, "to=2026-10-02") {
+		t.Fatalf("%s", s.calls[0].query)
+	}
+}

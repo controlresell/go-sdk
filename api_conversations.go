@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 
@@ -217,6 +218,8 @@ type ApiListConversationMessagesRequest struct {
 	id string
 	limit *int32
 	cursor *string
+	from *time.Time
+	to *time.Time
 }
 
 // Page size, 1 to 100 (50 by default).
@@ -231,6 +234,18 @@ func (r ApiListConversationMessagesRequest) Cursor(cursor string) ApiListConvers
 	return r
 }
 
+// Only the messages created at or after this instant (inclusive), ISO-8601 with its offset, such as &#x60;2026-10-01T00:00:00Z&#x60;.
+func (r ApiListConversationMessagesRequest) From(from time.Time) ApiListConversationMessagesRequest {
+	r.from = &from
+	return r
+}
+
+// Only the messages created before this instant (exclusive), ISO-8601 with its offset; after &#x60;from&#x60;.
+func (r ApiListConversationMessagesRequest) To(to time.Time) ApiListConversationMessagesRequest {
+	r.to = &to
+	return r
+}
+
 func (r ApiListConversationMessagesRequest) Execute() (*MessagePage, *http.Response, error) {
 	return r.ApiService.ListConversationMessagesExecute(r)
 }
@@ -238,7 +253,7 @@ func (r ApiListConversationMessagesRequest) Execute() (*MessagePage, *http.Respo
 /*
 ListConversationMessages List the messages of a conversation
 
-The messages of one conversation, oldest first, one page at a time: at most its 1 000 most recent messages. Requires `conversations:read`.
+The messages of one conversation, oldest first, one page at a time: at most its 1 000 most recent messages (of the period, with `from` or `to`). Pass the `nextCursor` of a page as `cursor` with the same `from` and `to` (a cursor reused with others is an `invalid_cursor`). `from` and `to` go straight to a period: `from` is inclusive, `to` exclusive. Requires `conversations:read`.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @param id The conversation's identifier, a UUID.
@@ -283,6 +298,12 @@ func (a *ConversationsAPIService) ListConversationMessagesExecute(r ApiListConve
 	}
 	if r.cursor != nil {
 		parameterAddToHeaderOrQuery(localVarQueryParams, "cursor", r.cursor, "form", "")
+	}
+	if r.from != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "from", r.from, "form", "")
+	}
+	if r.to != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "to", r.to, "form", "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
@@ -430,6 +451,8 @@ type ApiListConversationsRequest struct {
 	cursor *string
 	unread *bool
 	accountId *string
+	from *time.Time
+	to *time.Time
 }
 
 // Page size, 1 to 100 (50 by default).
@@ -456,6 +479,18 @@ func (r ApiListConversationsRequest) AccountId(accountId string) ApiListConversa
 	return r
 }
 
+// Only the conversations whose last message is at or after this instant (inclusive), ISO-8601 with its offset, such as &#x60;2026-10-01T00:00:00Z&#x60;.
+func (r ApiListConversationsRequest) From(from time.Time) ApiListConversationsRequest {
+	r.from = &from
+	return r
+}
+
+// Only the conversations whose last message is before this instant (exclusive), ISO-8601 with its offset; after &#x60;from&#x60;.
+func (r ApiListConversationsRequest) To(to time.Time) ApiListConversationsRequest {
+	r.to = &to
+	return r
+}
+
 func (r ApiListConversationsRequest) Execute() (*ConversationPage, *http.Response, error) {
 	return r.ApiService.ListConversationsExecute(r)
 }
@@ -463,7 +498,7 @@ func (r ApiListConversationsRequest) Execute() (*ConversationPage, *http.Respons
 /*
 ListConversations List the seller's conversations
 
-The conversations with buyers on the seller's marketplace accounts, latest activity first, one page at a time. A conversation that receives a message while you read moves to the head: read again from the first page to see it. Requires `conversations:read`.
+The conversations with buyers on the seller's marketplace accounts, latest activity first, one page at a time. A conversation that receives a message while you read moves to the head: read again from the first page to see it. Pass the `nextCursor` of a page as `cursor` with the same filters (a cursor reused with other filters is an `invalid_cursor`). `from` and `to` go straight to a period of the last message: `from` is inclusive, `to` exclusive, and the period is read page by page like the whole list. Requires `conversations:read`.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @return ApiListConversationsRequest
@@ -511,6 +546,12 @@ func (a *ConversationsAPIService) ListConversationsExecute(r ApiListConversation
 	}
 	if r.accountId != nil {
 		parameterAddToHeaderOrQuery(localVarQueryParams, "accountId", r.accountId, "form", "")
+	}
+	if r.from != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "from", r.from, "form", "")
+	}
+	if r.to != nil {
+		parameterAddToHeaderOrQuery(localVarQueryParams, "to", r.to, "form", "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}

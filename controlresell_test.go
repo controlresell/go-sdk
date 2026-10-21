@@ -344,3 +344,97 @@ func TestSendMessageAndSendOfferPostToTheConversation(t *testing.T) {
 		t.Fatalf("%v %v", paths, bodies)
 	}
 }
+
+func TestCreatePostsTheItemWithAKeyAndUpdatePatchesItWithoutOne(t *testing.T) {
+	var patched string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		status := 200
+		if n == 1 {
+			status = 201
+		}
+		if n == 2 {
+			body, _ := io.ReadAll(r.Body)
+			patched = string(body)
+		}
+		reply(w, status, item(7, "WOMEN"))
+	})
+	created, err := c.Items.Create(context.Background(), controlresell.ItemCreateRequest{Name: "n"}, controlresell.WithIdempotencyKey("k1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := controlresell.ItemUpdateRequest{}
+	patch.SetName("m")
+	updated, err := c.Items.Update(context.Background(), 7, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Id != 7 || updated.Id != 7 {
+		t.Fatalf("%v %v", created, updated)
+	}
+	if s.calls[0].method != "POST" || s.calls[0].header.Get(controlresell.IdempotencyKeyHeader) != "k1" {
+		t.Fatalf("%v", s.calls[0])
+	}
+	if strings.TrimSpace(patched) != `{"name":"m"}` {
+		t.Fatalf("%s", patched)
+	}
+	if s.calls[1].method != "PATCH" || s.calls[1].header.Get(controlresell.IdempotencyKeyHeader) != "" {
+		t.Fatalf("%v", s.calls[1])
+	}
+}
+
+const order = `{"id":"3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10","accountId":"3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10","type":"SALE",` +
+	`"status":"PAID","platformOrderId":%q,"price":{"amount":"12.50","currency":"EUR"},"prepared":false,` +
+	`"date":"2026-10-21T10:00:00Z","items":[]}`
+
+func TestOrdersGetAndLabelsReadTheOrderAndItsLabels(t *testing.T) {
+	var paths []string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		if strings.HasSuffix(r.URL.Path, "/labels") {
+			reply(w, 200, `{"data":[],"nextCursor":null}`)
+			return
+		}
+		reply(w, 200, fmt.Sprintf(order, "p1"))
+	})
+	id := "3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10"
+	got, err := c.Orders.Get(context.Background(), id)
+	if err != nil || got.PlatformOrderId != "p1" {
+		t.Fatalf("%v %v", got, err)
+	}
+	labels, err := c.Orders.Labels(context.Background(), id)
+	if err != nil || len(labels.Data) != 0 {
+		t.Fatalf("%v %v", labels, err)
+	}
+	if len(paths) != 2 || paths[0] != "/api/public/v1/orders/"+id || paths[1] != "/api/public/v1/orders/"+id+"/labels" {
+		t.Fatalf("%v", paths)
+	}
+}
+
+func TestOrdersAllFollowsTheCursorWithTheSameFilters(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			reply(w, 200, `{"data":[`+fmt.Sprintf(order, "a")+`],"nextCursor":"c2"}`)
+			return
+		}
+		reply(w, 200, `{"data":[`+fmt.Sprintf(order, "b")+`],"nextCursor":null}`)
+	})
+	params := controlresell.OrderListParams{Bucket: "to_send", Platform: "VINTED", From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)}
+	var ids []string
+	for o, err := range c.Orders.All(context.Background(), params) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, o.PlatformOrderId)
+	}
+	if len(ids) != 2 || ids[0] != "a" || ids[1] != "b" {
+		t.Fatalf("%v", ids)
+	}
+	for _, call := range s.calls {
+		if !strings.Contains(call.query, "bucket=to_send") || !strings.Contains(call.query, "platform=VINTED") || !strings.Contains(call.query, "from=2026-10-01") {
+			t.Fatalf("%s", call.query)
+		}
+	}
+	if strings.Contains(s.calls[0].query, "cursor") || !strings.Contains(s.calls[1].query, "cursor=c2") {
+		t.Fatalf("%s | %s", s.calls[0].query, s.calls[1].query)
+	}
+}

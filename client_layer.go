@@ -57,6 +57,8 @@ type Client struct {
 	Items *ItemsService
 	// Conversations are the conversations with buyers.
 	Conversations *ConversationsService
+	// Orders are the seller's sales and purchases.
+	Orders *OrdersService
 	// API is the underlying generated client, configured with the key and the retries.
 	API *APIClient
 }
@@ -95,6 +97,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		Accounts:      &AccountsService{api},
 		Items:         &ItemsService{api},
 		Conversations: &ConversationsService{api},
+		Orders:        &OrdersService{api},
 		API:           api,
 	}, nil
 }
@@ -189,6 +192,19 @@ func (s *ItemsService) Get(ctx context.Context, id int64) (*Item, error) {
 // Listings reads where an item is listed on the seller's marketplace accounts.
 func (s *ItemsService) Listings(ctx context.Context, id int64) (*ListingPage, error) {
 	value, response, err := s.api.ItemsAPI.ListItemListings(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// Create adds an item to the stock, without publishing it. opts may set the Idempotency-Key: to retry a Create yourself
+// (after a timeout, say), pass the same WithIdempotencyKey, or a second item is created.
+func (s *ItemsService) Create(ctx context.Context, body ItemCreateRequest, opts ...WriteOption) (*Item, error) {
+	value, response, err := s.api.ItemsAPI.CreateItem(ctx).ItemCreateRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
+// Update changes the given fields of an item (a PATCH: the fields left out are kept).
+func (s *ItemsService) Update(ctx context.Context, id int64, body ItemUpdateRequest) (*Item, error) {
+	value, response, err := s.api.ItemsAPI.UpdateItem(ctx, id).ItemUpdateRequest(body).Execute()
 	return result(value, response, err)
 }
 
@@ -316,6 +332,77 @@ func (s *ConversationsService) AllMessages(ctx context.Context, id string, limit
 			return nil, nil, err
 		}
 		return page.Data, page.NextCursor.Get(), nil
+	})
+}
+
+// OrdersService reads the seller's sales and purchases.
+type OrdersService struct{ api *APIClient }
+
+// OrderListParams are the parameters of an order list.
+type OrderListParams struct {
+	ListParams
+	// Bucket is "to_send" (the sales to ship) or "to_pickup" (the purchases waiting at a pickup point); empty for all.
+	Bucket string
+	// Platform keeps the orders of the accounts on one marketplace ("VINTED", "SHOPIFY"...); empty for all.
+	Platform string
+	// AccountID keeps the orders of one marketplace account; empty for all.
+	AccountID string
+	// From keeps the orders dated at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the orders dated before this instant (exclusive); zero for no bound.
+	To time.Time
+}
+
+// List reads one page of orders, the most recent first.
+func (s *OrdersService) List(ctx context.Context, params OrderListParams) (*OrderPage, error) {
+	request := s.api.OrdersAPI.ListOrders(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.Bucket != "" {
+		request = request.Bucket(params.Bucket)
+	}
+	if params.Platform != "" {
+		request = request.Platform(params.Platform)
+	}
+	if params.AccountID != "" {
+		request = request.AccountId(params.AccountID)
+	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// Get reads one order by its identifier.
+func (s *OrdersService) Get(ctx context.Context, id string) (*Order, error) {
+	value, response, err := s.api.OrdersAPI.GetOrder(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// Labels reads the shipping labels of an order.
+func (s *OrdersService) Labels(ctx context.Context, id string) (*OrderLabelPage, error) {
+	value, response, err := s.api.OrdersAPI.ListOrderLabels(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// All yields every order, page after page, with the same filters (params.Cursor is ignored).
+func (s *OrdersService) All(ctx context.Context, params OrderListParams) iter.Seq2[Order, error] {
+	return paginate(func(cursor string) ([]Order, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.List(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
 	})
 }
 

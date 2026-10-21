@@ -13,7 +13,7 @@ for item, err := range client.Items.All(ctx, controlresell.ItemListParams{}) {
 	}
 	fmt.Println(item.Name)
 }
-for order, err := range client.Orders.All(ctx, controlresell.OrderListParams{Bucket: "to_send"}) { // needs the orders:read scope; also Orders.Get(ctx, id), Orders.Labels(ctx, id), Orders.AllLabelsToShip(ctx, params)
+for order, err := range client.Orders.All(ctx, controlresell.OrderListParams{Bucket: "to_send"}) { // needs the orders:read scope; also Orders.Get(ctx, id), Orders.Labels(ctx, id)
 	if err != nil {
 		return err
 	}

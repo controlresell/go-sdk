@@ -13,8 +13,15 @@ for item, err := range client.Items.All(ctx, controlresell.ItemListParams{}) {
 	}
 	fmt.Println(item.Name)
 }
+for order, err := range client.Orders.All(ctx, controlresell.OrderListParams{Bucket: "to_send"}) { // also Orders.Get(ctx, id), Orders.Labels(ctx, id)
+	if err != nil {
+		return err
+	}
+	fmt.Println(order.Id)
+}
 
 // Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
+created, err := client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket"}) // Items.Update(ctx, id, controlresell.ItemUpdateRequest{...}) patches
 scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})
 message, err := client.Conversations.SendMessage(ctx, conversationID, controlresell.SendMessageRequest{Text: "Hello!"})
 ```

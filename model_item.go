@@ -34,11 +34,20 @@ type Item struct {
 	Sex NullableString `json:"sex,omitempty"`
 	Labels []string `json:"labels"`
 	Sold bool `json:"sold"`
+	PackageSizeId NullableInt64 `json:"packageSizeId,omitempty"`
+	MaterialIds []int64 `json:"materialIds"`
+	MeasurementLength NullableFloat32 `json:"measurementLength,omitempty"`
+	MeasurementWidth NullableFloat32 `json:"measurementWidth,omitempty"`
+	EnumValues []ItemEnumValue `json:"enumValues"`
+	Attributes []ItemAttribute `json:"attributes"`
+	CustomFields []ItemCustomField `json:"customFields"`
 	EstimatedPrice NullableMoney `json:"estimatedPrice,omitempty"`
 	PurchasePrice NullableMoney `json:"purchasePrice,omitempty"`
 	PurchaseDate NullableTime `json:"purchaseDate,omitempty"`
+	PurchasePlaceId NullableInt64 `json:"purchasePlaceId,omitempty"`
 	SellingPrice NullableMoney `json:"sellingPrice,omitempty"`
 	SellingDate NullableTime `json:"sellingDate,omitempty"`
+	SellingPlaceId NullableInt64 `json:"sellingPlaceId,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	AdditionalProperties map[string]interface{}
@@ -50,7 +59,7 @@ type _Item Item
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewItem(id int64, name string, photos []ItemPhoto, colorIds []int64, labels []string, sold bool, createdAt time.Time, updatedAt time.Time) *Item {
+func NewItem(id int64, name string, photos []ItemPhoto, colorIds []int64, labels []string, sold bool, materialIds []int64, enumValues []ItemEnumValue, attributes []ItemAttribute, customFields []ItemCustomField, createdAt time.Time, updatedAt time.Time) *Item {
 	this := Item{}
 	this.Id = id
 	this.Name = name
@@ -58,6 +67,10 @@ func NewItem(id int64, name string, photos []ItemPhoto, colorIds []int64, labels
 	this.ColorIds = colorIds
 	this.Labels = labels
 	this.Sold = sold
+	this.MaterialIds = materialIds
+	this.EnumValues = enumValues
+	this.Attributes = attributes
+	this.CustomFields = customFields
 	this.CreatedAt = createdAt
 	this.UpdatedAt = updatedAt
 	return &this
@@ -509,6 +522,228 @@ func (o *Item) SetSold(v bool) {
 	o.Sold = v
 }
 
+// GetPackageSizeId returns the PackageSizeId field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Item) GetPackageSizeId() int64 {
+	if o == nil || IsNil(o.PackageSizeId.Get()) {
+		var ret int64
+		return ret
+	}
+	return *o.PackageSizeId.Get()
+}
+
+// GetPackageSizeIdOk returns a tuple with the PackageSizeId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Item) GetPackageSizeIdOk() (*int64, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.PackageSizeId.Get(), o.PackageSizeId.IsSet()
+}
+
+// HasPackageSizeId returns a boolean if a field has been set.
+func (o *Item) HasPackageSizeId() bool {
+	if o != nil && o.PackageSizeId.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetPackageSizeId gets a reference to the given NullableInt64 and assigns it to the PackageSizeId field.
+func (o *Item) SetPackageSizeId(v int64) {
+	o.PackageSizeId.Set(&v)
+}
+// SetPackageSizeIdNil sets the value for PackageSizeId to be an explicit nil
+func (o *Item) SetPackageSizeIdNil() {
+	o.PackageSizeId.Set(nil)
+}
+
+// UnsetPackageSizeId ensures that no value is present for PackageSizeId, not even an explicit nil
+func (o *Item) UnsetPackageSizeId() {
+	o.PackageSizeId.Unset()
+}
+
+// GetMaterialIds returns the MaterialIds field value
+func (o *Item) GetMaterialIds() []int64 {
+	if o == nil {
+		var ret []int64
+		return ret
+	}
+
+	return o.MaterialIds
+}
+
+// GetMaterialIdsOk returns a tuple with the MaterialIds field value
+// and a boolean to check if the value has been set.
+func (o *Item) GetMaterialIdsOk() ([]int64, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.MaterialIds, true
+}
+
+// SetMaterialIds sets field value
+func (o *Item) SetMaterialIds(v []int64) {
+	o.MaterialIds = v
+}
+
+// GetMeasurementLength returns the MeasurementLength field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Item) GetMeasurementLength() float32 {
+	if o == nil || IsNil(o.MeasurementLength.Get()) {
+		var ret float32
+		return ret
+	}
+	return *o.MeasurementLength.Get()
+}
+
+// GetMeasurementLengthOk returns a tuple with the MeasurementLength field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Item) GetMeasurementLengthOk() (*float32, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.MeasurementLength.Get(), o.MeasurementLength.IsSet()
+}
+
+// HasMeasurementLength returns a boolean if a field has been set.
+func (o *Item) HasMeasurementLength() bool {
+	if o != nil && o.MeasurementLength.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetMeasurementLength gets a reference to the given NullableFloat32 and assigns it to the MeasurementLength field.
+func (o *Item) SetMeasurementLength(v float32) {
+	o.MeasurementLength.Set(&v)
+}
+// SetMeasurementLengthNil sets the value for MeasurementLength to be an explicit nil
+func (o *Item) SetMeasurementLengthNil() {
+	o.MeasurementLength.Set(nil)
+}
+
+// UnsetMeasurementLength ensures that no value is present for MeasurementLength, not even an explicit nil
+func (o *Item) UnsetMeasurementLength() {
+	o.MeasurementLength.Unset()
+}
+
+// GetMeasurementWidth returns the MeasurementWidth field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Item) GetMeasurementWidth() float32 {
+	if o == nil || IsNil(o.MeasurementWidth.Get()) {
+		var ret float32
+		return ret
+	}
+	return *o.MeasurementWidth.Get()
+}
+
+// GetMeasurementWidthOk returns a tuple with the MeasurementWidth field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Item) GetMeasurementWidthOk() (*float32, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.MeasurementWidth.Get(), o.MeasurementWidth.IsSet()
+}
+
+// HasMeasurementWidth returns a boolean if a field has been set.
+func (o *Item) HasMeasurementWidth() bool {
+	if o != nil && o.MeasurementWidth.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetMeasurementWidth gets a reference to the given NullableFloat32 and assigns it to the MeasurementWidth field.
+func (o *Item) SetMeasurementWidth(v float32) {
+	o.MeasurementWidth.Set(&v)
+}
+// SetMeasurementWidthNil sets the value for MeasurementWidth to be an explicit nil
+func (o *Item) SetMeasurementWidthNil() {
+	o.MeasurementWidth.Set(nil)
+}
+
+// UnsetMeasurementWidth ensures that no value is present for MeasurementWidth, not even an explicit nil
+func (o *Item) UnsetMeasurementWidth() {
+	o.MeasurementWidth.Unset()
+}
+
+// GetEnumValues returns the EnumValues field value
+func (o *Item) GetEnumValues() []ItemEnumValue {
+	if o == nil {
+		var ret []ItemEnumValue
+		return ret
+	}
+
+	return o.EnumValues
+}
+
+// GetEnumValuesOk returns a tuple with the EnumValues field value
+// and a boolean to check if the value has been set.
+func (o *Item) GetEnumValuesOk() ([]ItemEnumValue, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.EnumValues, true
+}
+
+// SetEnumValues sets field value
+func (o *Item) SetEnumValues(v []ItemEnumValue) {
+	o.EnumValues = v
+}
+
+// GetAttributes returns the Attributes field value
+func (o *Item) GetAttributes() []ItemAttribute {
+	if o == nil {
+		var ret []ItemAttribute
+		return ret
+	}
+
+	return o.Attributes
+}
+
+// GetAttributesOk returns a tuple with the Attributes field value
+// and a boolean to check if the value has been set.
+func (o *Item) GetAttributesOk() ([]ItemAttribute, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.Attributes, true
+}
+
+// SetAttributes sets field value
+func (o *Item) SetAttributes(v []ItemAttribute) {
+	o.Attributes = v
+}
+
+// GetCustomFields returns the CustomFields field value
+func (o *Item) GetCustomFields() []ItemCustomField {
+	if o == nil {
+		var ret []ItemCustomField
+		return ret
+	}
+
+	return o.CustomFields
+}
+
+// GetCustomFieldsOk returns a tuple with the CustomFields field value
+// and a boolean to check if the value has been set.
+func (o *Item) GetCustomFieldsOk() ([]ItemCustomField, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.CustomFields, true
+}
+
+// SetCustomFields sets field value
+func (o *Item) SetCustomFields(v []ItemCustomField) {
+	o.CustomFields = v
+}
+
 // GetEstimatedPrice returns the EstimatedPrice field value if set, zero value otherwise (both if not set or set to explicit null).
 func (o *Item) GetEstimatedPrice() Money {
 	if o == nil || IsNil(o.EstimatedPrice.Get()) {
@@ -635,6 +870,48 @@ func (o *Item) UnsetPurchaseDate() {
 	o.PurchaseDate.Unset()
 }
 
+// GetPurchasePlaceId returns the PurchasePlaceId field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Item) GetPurchasePlaceId() int64 {
+	if o == nil || IsNil(o.PurchasePlaceId.Get()) {
+		var ret int64
+		return ret
+	}
+	return *o.PurchasePlaceId.Get()
+}
+
+// GetPurchasePlaceIdOk returns a tuple with the PurchasePlaceId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Item) GetPurchasePlaceIdOk() (*int64, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.PurchasePlaceId.Get(), o.PurchasePlaceId.IsSet()
+}
+
+// HasPurchasePlaceId returns a boolean if a field has been set.
+func (o *Item) HasPurchasePlaceId() bool {
+	if o != nil && o.PurchasePlaceId.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetPurchasePlaceId gets a reference to the given NullableInt64 and assigns it to the PurchasePlaceId field.
+func (o *Item) SetPurchasePlaceId(v int64) {
+	o.PurchasePlaceId.Set(&v)
+}
+// SetPurchasePlaceIdNil sets the value for PurchasePlaceId to be an explicit nil
+func (o *Item) SetPurchasePlaceIdNil() {
+	o.PurchasePlaceId.Set(nil)
+}
+
+// UnsetPurchasePlaceId ensures that no value is present for PurchasePlaceId, not even an explicit nil
+func (o *Item) UnsetPurchasePlaceId() {
+	o.PurchasePlaceId.Unset()
+}
+
 // GetSellingPrice returns the SellingPrice field value if set, zero value otherwise (both if not set or set to explicit null).
 func (o *Item) GetSellingPrice() Money {
 	if o == nil || IsNil(o.SellingPrice.Get()) {
@@ -717,6 +994,48 @@ func (o *Item) SetSellingDateNil() {
 // UnsetSellingDate ensures that no value is present for SellingDate, not even an explicit nil
 func (o *Item) UnsetSellingDate() {
 	o.SellingDate.Unset()
+}
+
+// GetSellingPlaceId returns the SellingPlaceId field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Item) GetSellingPlaceId() int64 {
+	if o == nil || IsNil(o.SellingPlaceId.Get()) {
+		var ret int64
+		return ret
+	}
+	return *o.SellingPlaceId.Get()
+}
+
+// GetSellingPlaceIdOk returns a tuple with the SellingPlaceId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Item) GetSellingPlaceIdOk() (*int64, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.SellingPlaceId.Get(), o.SellingPlaceId.IsSet()
+}
+
+// HasSellingPlaceId returns a boolean if a field has been set.
+func (o *Item) HasSellingPlaceId() bool {
+	if o != nil && o.SellingPlaceId.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetSellingPlaceId gets a reference to the given NullableInt64 and assigns it to the SellingPlaceId field.
+func (o *Item) SetSellingPlaceId(v int64) {
+	o.SellingPlaceId.Set(&v)
+}
+// SetSellingPlaceIdNil sets the value for SellingPlaceId to be an explicit nil
+func (o *Item) SetSellingPlaceIdNil() {
+	o.SellingPlaceId.Set(nil)
+}
+
+// UnsetSellingPlaceId ensures that no value is present for SellingPlaceId, not even an explicit nil
+func (o *Item) UnsetSellingPlaceId() {
+	o.SellingPlaceId.Unset()
 }
 
 // GetCreatedAt returns the CreatedAt field value
@@ -804,6 +1123,19 @@ func (o Item) ToMap() (map[string]interface{}, error) {
 	}
 	toSerialize["labels"] = o.Labels
 	toSerialize["sold"] = o.Sold
+	if o.PackageSizeId.IsSet() {
+		toSerialize["packageSizeId"] = o.PackageSizeId.Get()
+	}
+	toSerialize["materialIds"] = o.MaterialIds
+	if o.MeasurementLength.IsSet() {
+		toSerialize["measurementLength"] = o.MeasurementLength.Get()
+	}
+	if o.MeasurementWidth.IsSet() {
+		toSerialize["measurementWidth"] = o.MeasurementWidth.Get()
+	}
+	toSerialize["enumValues"] = o.EnumValues
+	toSerialize["attributes"] = o.Attributes
+	toSerialize["customFields"] = o.CustomFields
 	if o.EstimatedPrice.IsSet() {
 		toSerialize["estimatedPrice"] = o.EstimatedPrice.Get()
 	}
@@ -813,11 +1145,17 @@ func (o Item) ToMap() (map[string]interface{}, error) {
 	if o.PurchaseDate.IsSet() {
 		toSerialize["purchaseDate"] = o.PurchaseDate.Get()
 	}
+	if o.PurchasePlaceId.IsSet() {
+		toSerialize["purchasePlaceId"] = o.PurchasePlaceId.Get()
+	}
 	if o.SellingPrice.IsSet() {
 		toSerialize["sellingPrice"] = o.SellingPrice.Get()
 	}
 	if o.SellingDate.IsSet() {
 		toSerialize["sellingDate"] = o.SellingDate.Get()
+	}
+	if o.SellingPlaceId.IsSet() {
+		toSerialize["sellingPlaceId"] = o.SellingPlaceId.Get()
 	}
 	toSerialize["createdAt"] = o.CreatedAt
 	toSerialize["updatedAt"] = o.UpdatedAt
@@ -840,6 +1178,10 @@ func (o *Item) UnmarshalJSON(data []byte) (err error) {
 		"colorIds",
 		"labels",
 		"sold",
+		"materialIds",
+		"enumValues",
+		"attributes",
+		"customFields",
 		"createdAt",
 		"updatedAt",
 	}
@@ -884,11 +1226,20 @@ func (o *Item) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "sex")
 		delete(additionalProperties, "labels")
 		delete(additionalProperties, "sold")
+		delete(additionalProperties, "packageSizeId")
+		delete(additionalProperties, "materialIds")
+		delete(additionalProperties, "measurementLength")
+		delete(additionalProperties, "measurementWidth")
+		delete(additionalProperties, "enumValues")
+		delete(additionalProperties, "attributes")
+		delete(additionalProperties, "customFields")
 		delete(additionalProperties, "estimatedPrice")
 		delete(additionalProperties, "purchasePrice")
 		delete(additionalProperties, "purchaseDate")
+		delete(additionalProperties, "purchasePlaceId")
 		delete(additionalProperties, "sellingPrice")
 		delete(additionalProperties, "sellingDate")
+		delete(additionalProperties, "sellingPlaceId")
 		delete(additionalProperties, "createdAt")
 		delete(additionalProperties, "updatedAt")
 		o.AdditionalProperties = additionalProperties

@@ -74,6 +74,7 @@ func reply(w http.ResponseWriter, status int, body string, headers ...string) {
 func item(id int64, sex string) string {
 	return fmt.Sprintf(`{"id":%d,"name":"n","sku":null,"description":null,"photos":[],"categoryId":null,"brandId":null,`+
 		`"sizeId":null,"colorIds":[],"state":null,"sex":%q,"labels":[],"sold":false,`+
+		`"materialIds":[],"enumValues":[],"attributes":[],"customFields":[],`+
 		`"estimatedPrice":{"amount":"12.50","currency":"EUR"},"purchasePrice":null,"purchaseDate":null,`+
 		`"sellingPrice":null,"sellingDate":null,"createdAt":"2026-10-20T10:00:00Z","updatedAt":"2026-10-20T10:00:00Z",`+
 		`"unknownField":1}`, id, sex)

@@ -510,6 +510,59 @@ func TestCustomersGetReadsOneCustomer(t *testing.T) {
 	}
 }
 
+func TestCatalogsAllBrandsFollowsTheCursorWithTheSameQuery(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			reply(w, 200, `{"data":[{"id":1,"name":"Nike","custom":false}],"nextCursor":"c2"}`)
+			return
+		}
+		reply(w, 200, `{"data":[{"id":2,"name":"Nikon","custom":true}],"nextCursor":null}`)
+	})
+	var names []string
+	for b, err := range c.Catalogs.AllBrands(context.Background(), controlresell.CatalogListParams{Q: "nik"}) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, b.Name)
+	}
+	if len(names) != 2 || names[0] != "Nike" || names[1] != "Nikon" {
+		t.Fatalf("%v", names)
+	}
+	for _, call := range s.calls {
+		if !strings.Contains(call.query, "q=nik") {
+			t.Fatalf("%s", call.query)
+		}
+	}
+	if strings.Contains(s.calls[0].query, "cursor") || !strings.Contains(s.calls[1].query, "cursor=c2") {
+		t.Fatalf("%s | %s", s.calls[0].query, s.calls[1].query)
+	}
+}
+
+func TestCatalogsColorsSendTheCategoryAndReadTheValues(t *testing.T) {
+	var path, query string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		path, query = r.URL.Path, r.URL.RawQuery
+		reply(w, 200, `{"data":[{"id":3,"key":"red","title":"Red"}],"nextCursor":null}`)
+	})
+	page, err := c.Catalogs.Colors(context.Background(), controlresell.CatalogListParams{CategoryID: 12})
+	if err != nil || len(page.Data) != 1 || page.Data[0].Title != "Red" ||
+		path != "/api/public/v1/catalogs/colors" || !strings.Contains(query, "categoryId=12") {
+		t.Fatalf("%v %v %s %s", page, err, path, query)
+	}
+}
+
+func TestCatalogsCategoryFieldsReadsTheFieldsOfOneCategory(t *testing.T) {
+	var path string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		reply(w, 200, `{"categoryId":12,"sizeGroupIds":[1],"enumFields":[],"textFields":[],"measurements":[]}`)
+	})
+	got, err := c.Catalogs.CategoryFields(context.Background(), 12)
+	if err != nil || got.CategoryId != 12 || path != "/api/public/v1/catalogs/categories/12/fields" {
+		t.Fatalf("%v %v %s", got, err, path)
+	}
+}
+
 func TestConversationsMessagesSendTheFromAndToWindow(t *testing.T) {
 	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
 		reply(w, 200, `{"data":[],"nextCursor":null}`)

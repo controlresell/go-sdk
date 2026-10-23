@@ -20,6 +20,13 @@ for order, err := range client.Orders.All(ctx, controlresell.OrderListParams{Buc
 	fmt.Println(order.Id)
 }
 
+for brand, err := range client.Catalogs.AllBrands(ctx, controlresell.CatalogListParams{Q: "nik"}) { // the identifiers an item is written with (items:read): Categories, Category, CategoryFields, Brands, Sizes, Colors, Conditions, PackageSizes, Materials
+	if err != nil {
+		return err
+	}
+	fmt.Println(brand.Id, brand.Name)
+}
+
 // Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
 created, err := client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket"}) // Items.Update(ctx, id, controlresell.ItemUpdateRequest{...}) patches
 scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})

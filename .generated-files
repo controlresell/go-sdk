@@ -1,4 +1,5 @@
 api_accounts.go
+api_catalogs.go
 api_conversations.go
 api_customers.go
 api_items.go
@@ -9,6 +10,18 @@ configuration.go
 model_account_page.go
 model_account.go
 model_api_error.go
+model_catalog_brand_page.go
+model_catalog_brand.go
+model_catalog_category_fields.go
+model_catalog_category_page.go
+model_catalog_category.go
+model_catalog_enum_field.go
+model_catalog_measurement.go
+model_catalog_size_page.go
+model_catalog_size.go
+model_catalog_text_field.go
+model_catalog_value_page.go
+model_catalog_value.go
 model_conversation_page.go
 model_conversation.go
 model_customer_address.go

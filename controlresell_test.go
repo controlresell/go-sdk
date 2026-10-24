@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -732,5 +733,70 @@ func TestWebhooksDeleteEndpointResolvesOn204(t *testing.T) {
 	})
 	if err := c.Webhooks.DeleteEndpoint(context.Background(), "e-1"); err != nil || method != "DELETE" {
 		t.Fatalf("%v %s", err, method)
+	}
+}
+
+func TestWebhooksTestIsNeverReplayedAfterA5xxOrALostConnectionButIsAfterA429(t *testing.T) {
+	for _, status := range []int{500, 502, 503, 504} {
+		s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) { reply(w, status, envelope("unavailable")) })
+		if _, err := c.Webhooks.Test(context.Background(), "e-1"); err == nil {
+			t.Fatalf("status %d: no error", status)
+		}
+		if s.count() != 1 {
+			t.Fatalf("status %d replayed the test: %d calls", status, s.count())
+		}
+	}
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		conn, _, _ := w.(http.Hijacker).Hijack()
+		_ = conn.Close() // the request reached the server, the answer is lost
+	})
+	if _, err := c.Webhooks.Test(context.Background(), "e-1"); err == nil || s.count() != 1 {
+		t.Fatalf("a lost connection replayed the test: %d calls, %v", s.count(), err)
+	}
+	s, c = client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			reply(w, 429, envelope("webhook_endpoint_busy"), "Retry-After", "0")
+			return
+		}
+		reply(w, 200, `{"success":true,"statusCode":200,"durationMs":12}`)
+	})
+	if result, err := c.Webhooks.Test(context.Background(), "e-1"); err != nil || !result.Success || s.count() != 2 {
+		t.Fatalf("%v %v %d", result, err, s.count())
+	}
+	s, c = client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if n == 1 {
+			reply(w, 503, envelope("unavailable"))
+			return
+		}
+		reply(w, 200, `{"data":[],"nextCursor":null}`)
+	})
+	if _, err := c.Accounts.List(context.Background(), controlresell.ListParams{}); err != nil || s.count() != 2 {
+		t.Fatalf("other calls keep the retry on 503: %v %d", err, s.count())
+	}
+}
+
+type dialFailing struct{ calls int }
+
+func (d *dialFailing) RoundTrip(*http.Request) (*http.Response, error) {
+	d.calls++
+	if d.calls == 1 {
+		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}
+	}
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"success":true,"durationMs":1}`))}, nil
+}
+
+func TestWebhooksTestIsReplayedAfterAFailedDial(t *testing.T) {
+	transport := &dialFailing{}
+	c, err := controlresell.NewClient(
+		controlresell.WithAPIKey(key),
+		controlresell.WithBaseURL("http://api.test"),
+		controlresell.WithHTTPClient(&http.Client{Transport: transport}),
+		controlresell.WithRetryPolicy(controlresell.RetryPolicy{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Webhooks.Test(context.Background(), "e-1"); err != nil || transport.calls != 2 {
+		t.Fatalf("%v %d", err, transport.calls)
 	}
 }

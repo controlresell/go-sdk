@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	mathrand "math/rand/v2"
+	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -43,7 +46,8 @@ func (p RetryPolicy) backoff(attempt int) time.Duration {
 
 // retryTransport gives each POST an Idempotency-Key (kept across its retries), retries a rate limit, a gateway or
 // availability error (502, 503, 504), a 409 idempotency_in_progress and a network error, and waits for Retry-After
-// when the API sends it. A 500 is never retried.
+// when the API sends it. A 500 is never retried. The webhook test call sends a real event and the API ignores its
+// key, so it is only retried on a 429 and on a connection error before the request left (a failed dial).
 type retryTransport struct {
 	base   http.RoundTripper
 	policy RetryPolicy
@@ -54,6 +58,7 @@ func (t *retryTransport) RoundTrip(request *http.Request) (*http.Response, error
 		request = request.Clone(request.Context())
 		request.Header.Set(IdempotencyKeyHeader, newKey())
 	}
+	replayable := !isWebhookTest(request)
 	for attempt := 0; ; attempt++ {
 		last := attempt >= t.policy.MaxRetries
 		attemptRequest := request
@@ -68,12 +73,12 @@ func (t *retryTransport) RoundTrip(request *http.Request) (*http.Response, error
 		response, err := t.base.RoundTrip(attemptRequest)
 		var delay time.Duration
 		if err != nil {
-			if last {
+			if last || (!replayable && !failedBeforeSending(err)) {
 				return nil, err
 			}
 			delay = t.policy.backoff(attempt)
 		} else {
-			if last || !shouldRetry(response) {
+			if last || (!replayable && response.StatusCode != http.StatusTooManyRequests) || !shouldRetry(response) {
 				return response, nil
 			}
 			delay = t.policy.backoff(attempt)
@@ -91,6 +96,18 @@ func (t *retryTransport) RoundTrip(request *http.Request) (*http.Response, error
 		case <-timer.C:
 		}
 	}
+}
+
+var webhookTestPath = regexp.MustCompile(`/webhook-endpoints/[^/]+/test/?$`)
+
+func isWebhookTest(request *http.Request) bool {
+	return request.Method == http.MethodPost && webhookTestPath.MatchString(request.URL.Path)
+}
+
+// failedBeforeSending is true for an error raised while connecting: nothing reached the server.
+func failedBeforeSending(err error) bool {
+	var op *net.OpError
+	return errors.As(err, &op) && op.Op == "dial"
 }
 
 func shouldRetry(response *http.Response) bool {

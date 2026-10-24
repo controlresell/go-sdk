@@ -510,6 +510,78 @@ func TestCustomersGetReadsOneCustomer(t *testing.T) {
 	}
 }
 
+const favorite = `{"id":"3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10","accountId":"3f0c2a52-0b0c-4d65-9f40-2d2d3b1f4a10","platform":"VINTED",` +
+	`"buyerId":%q,"createdAt":"2026-10-24T00:00:00Z","messageSentAt":null,"listingId":"L1",` +
+	`"item":{"id":42,"name":"Jacket","price":{"amount":"12.50","currency":"EUR"},"sold":false}}`
+
+func TestFavoritesAllFollowsTheCursorWithTheSameFilters(t *testing.T) {
+	var path string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		if n == 1 {
+			reply(w, 200, `{"data":[`+fmt.Sprintf(favorite, "b1")+`],"nextCursor":"c2"}`)
+			return
+		}
+		reply(w, 200, `{"data":[`+fmt.Sprintf(favorite, "b2")+`],"nextCursor":null}`)
+	})
+	params := controlresell.FavoriteListParams{From: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ItemID: 42, AccountID: "acc"}
+	var buyers []string
+	for f, err := range c.Favorites.All(context.Background(), params) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Item.Get().Name != "Jacket" {
+			t.Fatalf("%v", f)
+		}
+		buyers = append(buyers, f.BuyerId)
+	}
+	if len(buyers) != 2 || buyers[0] != "b1" || buyers[1] != "b2" {
+		t.Fatalf("%v", buyers)
+	}
+	for _, call := range s.calls {
+		if path != "/api/public/v1/favorites" || !strings.Contains(call.query, "from=2026-10-01") ||
+			!strings.Contains(call.query, "itemId=42") || !strings.Contains(call.query, "accountId=acc") {
+			t.Fatalf("%s?%s", path, call.query)
+		}
+	}
+	if strings.Contains(s.calls[0].query, "cursor") || !strings.Contains(s.calls[1].query, "cursor=c2") {
+		t.Fatalf("%s | %s", s.calls[0].query, s.calls[1].query)
+	}
+}
+
+func TestFavoritesAllItemReadsTheFavoritesOfOneItem(t *testing.T) {
+	var path string
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		reply(w, 200, `{"data":[`+fmt.Sprintf(favorite, "b1")+`],"nextCursor":null}`)
+	})
+	params := controlresell.ItemFavoriteListParams{To: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)}
+	count := 0
+	for _, err := range c.Favorites.AllItem(context.Background(), 42, params) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		count++
+	}
+	if count != 1 || path != "/api/public/v1/items/42/favorites" || !strings.Contains(s.calls[0].query, "to=2026-10-02") {
+		t.Fatalf("%d %s?%s", count, path, s.calls[0].query)
+	}
+}
+
+func TestConversationsListSendsTheBuyerItemAndOfferStatusFilters(t *testing.T) {
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		reply(w, 200, `{"data":[],"nextCursor":null}`)
+	})
+	if _, err := c.Conversations.List(context.Background(), controlresell.ConversationListParams{BuyerID: "b-1", ItemID: 42, OfferStatus: "PENDING"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"buyerId=b-1", "itemId=42", "offerStatus=PENDING"} {
+		if !strings.Contains(s.calls[0].query, want) {
+			t.Fatalf("%s: %s", want, s.calls[0].query)
+		}
+	}
+}
+
 func TestCatalogsAllBrandsFollowsTheCursorWithTheSameQuery(t *testing.T) {
 	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
 		if n == 1 {

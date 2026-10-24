@@ -27,6 +27,14 @@ for brand, err := range client.Catalogs.AllBrands(ctx, controlresell.CatalogList
 	fmt.Println(brand.Id, brand.Name)
 }
 
+for favorite, err := range client.Favorites.All(ctx, controlresell.FavoriteListParams{ItemID: 42}) { // the buyers who favorited a listing (items:read); also Favorites.AllItem(ctx, 42, ...), List, ListItem
+	if err != nil {
+		return err
+	}
+	fmt.Println(favorite.BuyerId)
+}
+conversations, err := client.Conversations.List(ctx, controlresell.ConversationListParams{BuyerID: "BUYER_ID", OfferStatus: "PENDING"}) // BuyerID, ItemID and OfferStatus filter the conversations
+
 // Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
 created, err := client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket"}) // Items.Update(ctx, id, controlresell.ItemUpdateRequest{...}) patches
 scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})

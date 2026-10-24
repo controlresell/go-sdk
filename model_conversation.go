@@ -25,6 +25,7 @@ type Conversation struct {
 	AccountId string `json:"accountId"`
 	Platform NullableString `json:"platform,omitempty"`
 	BuyerLogin NullableString `json:"buyerLogin,omitempty"`
+	BuyerId NullableString `json:"buyerId,omitempty"`
 	Unread bool `json:"unread"`
 	Pinned bool `json:"pinned"`
 	LastMessage NullableMessage `json:"lastMessage,omitempty"`
@@ -187,6 +188,48 @@ func (o *Conversation) SetBuyerLoginNil() {
 // UnsetBuyerLogin ensures that no value is present for BuyerLogin, not even an explicit nil
 func (o *Conversation) UnsetBuyerLogin() {
 	o.BuyerLogin.Unset()
+}
+
+// GetBuyerId returns the BuyerId field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *Conversation) GetBuyerId() string {
+	if o == nil || IsNil(o.BuyerId.Get()) {
+		var ret string
+		return ret
+	}
+	return *o.BuyerId.Get()
+}
+
+// GetBuyerIdOk returns a tuple with the BuyerId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Conversation) GetBuyerIdOk() (*string, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.BuyerId.Get(), o.BuyerId.IsSet()
+}
+
+// HasBuyerId returns a boolean if a field has been set.
+func (o *Conversation) HasBuyerId() bool {
+	if o != nil && o.BuyerId.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetBuyerId gets a reference to the given NullableString and assigns it to the BuyerId field.
+func (o *Conversation) SetBuyerId(v string) {
+	o.BuyerId.Set(&v)
+}
+// SetBuyerIdNil sets the value for BuyerId to be an explicit nil
+func (o *Conversation) SetBuyerIdNil() {
+	o.BuyerId.Set(nil)
+}
+
+// UnsetBuyerId ensures that no value is present for BuyerId, not even an explicit nil
+func (o *Conversation) UnsetBuyerId() {
+	o.BuyerId.Unset()
 }
 
 // GetUnread returns the Unread field value
@@ -363,6 +406,9 @@ func (o Conversation) ToMap() (map[string]interface{}, error) {
 	if o.BuyerLogin.IsSet() {
 		toSerialize["buyerLogin"] = o.BuyerLogin.Get()
 	}
+	if o.BuyerId.IsSet() {
+		toSerialize["buyerId"] = o.BuyerId.Get()
+	}
 	toSerialize["unread"] = o.Unread
 	toSerialize["pinned"] = o.Pinned
 	if o.LastMessage.IsSet() {
@@ -423,6 +469,7 @@ func (o *Conversation) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "accountId")
 		delete(additionalProperties, "platform")
 		delete(additionalProperties, "buyerLogin")
+		delete(additionalProperties, "buyerId")
 		delete(additionalProperties, "unread")
 		delete(additionalProperties, "pinned")
 		delete(additionalProperties, "lastMessage")

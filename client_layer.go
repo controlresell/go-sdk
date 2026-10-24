@@ -61,6 +61,8 @@ type Client struct {
 	Orders *OrdersService
 	// Customers are the other parties of the seller's sales and purchases.
 	Customers *CustomersService
+	// Favorites are the buyers who put the seller's listings in their favorites.
+	Favorites *FavoritesService
 	// Catalogs are the identifiers an item is written with: categories, brands, sizes, colors...
 	Catalogs *CatalogsService
 	// Webhooks are the seller's webhook endpoints, their deliveries and the recent events.
@@ -105,6 +107,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		Conversations: &ConversationsService{api},
 		Orders:        &OrdersService{api},
 		Customers:     &CustomersService{api},
+		Favorites:     &FavoritesService{api},
 		Catalogs:      &CatalogsService{api},
 		Webhooks:      &WebhooksService{api},
 		API:           api,
@@ -272,6 +275,12 @@ type ConversationListParams struct {
 	From time.Time
 	// To keeps the conversations whose last message is before this instant (exclusive); zero for no bound.
 	To time.Time
+	// BuyerID keeps the conversations with one buyer, by their identifier on the marketplace; empty for all.
+	BuyerID string
+	// ItemID keeps the conversations about one item, through its transactions; 0 for all.
+	ItemID int64
+	// OfferStatus keeps the conversations with at least one offer at this status (PENDING, ACCEPTED, REJECTED or CANCELED); empty for all.
+	OfferStatus string
 }
 
 // List reads one page of conversations.
@@ -294,6 +303,15 @@ func (s *ConversationsService) List(ctx context.Context, params ConversationList
 	}
 	if !params.To.IsZero() {
 		request = request.To(params.To)
+	}
+	if params.BuyerID != "" {
+		request = request.BuyerId(params.BuyerID)
+	}
+	if params.ItemID != 0 {
+		request = request.ItemId(params.ItemID)
+	}
+	if params.OfferStatus != "" {
+		request = request.OfferStatus(params.OfferStatus)
 	}
 	value, response, err := request.Execute()
 	return result(value, response, err)
@@ -785,4 +803,99 @@ func result[T any](value *T, response *http.Response, err error) (*T, error) {
 		return nil, convert(response, err)
 	}
 	return value, nil
+}
+
+// FavoritesService reads the buyers who put the seller's listings in their favorites (needs the items:read scope).
+type FavoritesService struct{ api *APIClient }
+
+// FavoriteListParams are the parameters of a favorite list.
+type FavoriteListParams struct {
+	ListParams
+	// AccountID keeps the favorites of the listings of one marketplace account; empty for all.
+	AccountID string
+	// ItemID keeps the favorites of the listings of one item; 0 for all.
+	ItemID int64
+	// From keeps the favorites created at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the favorites created before this instant (exclusive); zero for no bound.
+	To time.Time
+}
+
+// List reads one page of favorites, the most recent first.
+func (s *FavoritesService) List(ctx context.Context, params FavoriteListParams) (*FavoritePage, error) {
+	request := s.api.FavoritesAPI.ListFavorites(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.AccountID != "" {
+		request = request.AccountId(params.AccountID)
+	}
+	if params.ItemID != 0 {
+		request = request.ItemId(params.ItemID)
+	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// All yields every favorite, page after page, with the same filters (params.Cursor is ignored).
+func (s *FavoritesService) All(ctx context.Context, params FavoriteListParams) iter.Seq2[Favorite, error] {
+	return paginate(func(cursor string) ([]Favorite, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.List(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// ItemFavoriteListParams are the parameters of the favorite list of one item.
+type ItemFavoriteListParams struct {
+	ListParams
+	// From keeps the favorites created at or after this instant (inclusive); zero for no bound.
+	From time.Time
+	// To keeps the favorites created before this instant (exclusive); zero for no bound.
+	To time.Time
+}
+
+// ListItem reads one page of the favorites of an item, on every account it is listed on, the most recent first.
+func (s *FavoritesService) ListItem(ctx context.Context, id int64, params ItemFavoriteListParams) (*FavoritePage, error) {
+	request := s.api.FavoritesAPI.ListItemFavorites(ctx, id)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if !params.From.IsZero() {
+		request = request.From(params.From)
+	}
+	if !params.To.IsZero() {
+		request = request.To(params.To)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllItem yields every favorite of an item, page after page, with the same period (params.Cursor is ignored).
+func (s *FavoritesService) AllItem(ctx context.Context, id int64, params ItemFavoriteListParams) iter.Seq2[Favorite, error] {
+	return paginate(func(cursor string) ([]Favorite, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.ListItem(ctx, id, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
 }

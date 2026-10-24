@@ -20,10 +20,36 @@ for order, err := range client.Orders.All(ctx, controlresell.OrderListParams{Buc
 	fmt.Println(order.Id)
 }
 
+for brand, err := range client.Catalogs.AllBrands(ctx, controlresell.CatalogListParams{Q: "nik"}) { // the identifiers an item is written with (items:read): Categories, Category, CategoryFields, Brands, Sizes, Colors, Conditions, PackageSizes, Materials
+	if err != nil {
+		return err
+	}
+	fmt.Println(brand.Id, brand.Name)
+}
+
+for favorite, err := range client.Favorites.All(ctx, controlresell.FavoriteListParams{ItemID: 42}) { // the buyers who favorited a listing (items:read); also Favorites.AllItem(ctx, 42, ...), List, ListItem
+	if err != nil {
+		return err
+	}
+	fmt.Println(favorite.BuyerId)
+}
+conversations, err := client.Conversations.List(ctx, controlresell.ConversationListParams{BuyerID: "BUYER_ID", OfferStatus: "PENDING"}) // BuyerID, ItemID and OfferStatus filter the conversations
+
 // Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
 created, err := client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket"}) // Items.Update(ctx, id, controlresell.ItemUpdateRequest{...}) patches
 scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})
 message, err := client.Conversations.SendMessage(ctx, conversationID, controlresell.SendMessageRequest{Text: "Hello!"})
+
+// Webhooks (webhooks:read / webhooks:write): Endpoints, Endpoint, CreateEndpoint, UpdateEndpoint, DeleteEndpoint, Secret,
+// RotateSecret, Test, Deliveries, RetryDelivery, Recover, EventTypes; Events / AllEvents catch up the last 7 days.
+endpoint, err := client.Webhooks.CreateEndpoint(ctx, controlresell.WebhookEndpointCreateRequest{Url: "https://example.com/hooks", EventTypes: []string{"item.sold"}})
+fmt.Println(endpoint.Endpoint.Id, endpoint.Secret) // the signing secret, shown once (Webhooks.Secret reads it again)
+for event, err := range client.Webhooks.AllEvents(ctx, controlresell.EventListParams{Types: []string{"item.sold"}}) {
+	if err != nil {
+		return err
+	}
+	fmt.Println(event.Type, event.Data["itemId"])
+}
 ```
 
 Retries (rate limits, 502/503/504, network errors), `Idempotency-Key` on every `POST`, cursor pagination with range-over-func iterators and typed errors (`*NotFoundError`, `*RateLimitError`... all unwrapping to `*APIError`) are built in. The client is generated from the API's OpenAPI document (`scripts/generate.sh`; the generated files are listed in `.generated-files`).

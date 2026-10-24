@@ -60,8 +60,8 @@ func (s *WebhooksService) RotateSecret(ctx context.Context, id string, body Webh
 	return result(value, response, err)
 }
 
-// Test sends a webhook.test event to the endpoint now and returns how it answered. A test is never replayed: a retry
-// after a gateway error or a network error may send the receiver another webhook.test event.
+// Test sends a webhook.test event to the endpoint now and returns how it answered. A test takes no Idempotency-Key
+// option: a retry after a gateway error or a network error may send the receiver another webhook.test event.
 func (s *WebhooksService) Test(ctx context.Context, id string) (*WebhookTestResult, error) {
 	value, response, err := s.api.WebhooksAPI.TestWebhookEndpoint(ctx, id).Execute()
 	return result(value, response, err)

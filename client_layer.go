@@ -61,6 +61,10 @@ type Client struct {
 	Orders *OrdersService
 	// Customers are the other parties of the seller's sales and purchases.
 	Customers *CustomersService
+	// Catalogs are the identifiers an item is written with: categories, brands, sizes, colors...
+	Catalogs *CatalogsService
+	// Webhooks are the seller's webhook endpoints, their deliveries and the recent events.
+	Webhooks *WebhooksService
 	// API is the underlying generated client, configured with the key and the retries.
 	API *APIClient
 }
@@ -101,6 +105,8 @@ func NewClient(opts ...Option) (*Client, error) {
 		Conversations: &ConversationsService{api},
 		Orders:        &OrdersService{api},
 		Customers:     &CustomersService{api},
+		Catalogs:      &CatalogsService{api},
+		Webhooks:      &WebhooksService{api},
 		API:           api,
 	}, nil
 }
@@ -511,6 +517,240 @@ func (s *CustomersService) All(ctx context.Context, params CustomerListParams) i
 		page := params
 		page.Cursor = cursor
 		result, err := s.List(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// CatalogsService reads the catalog an item is written with (needs the items:read scope).
+type CatalogsService struct{ api *APIClient }
+
+// CatalogListParams are the parameters of a catalog list.
+type CatalogListParams struct {
+	ListParams
+	// CategoryID keeps what applies to one category (sizes, colors, conditions, package sizes, materials); 0 for all.
+	CategoryID int64
+	// ParentID keeps the children of one category (categories only); 0 for all.
+	ParentID int64
+	// Platform keeps the categories of one marketplace (categories only); empty for all.
+	Platform string
+	// Q keeps the brands whose name starts with it (brands only); empty for all.
+	Q string
+}
+
+// Categories reads one page of categories, flat, by identifier.
+func (s *CatalogsService) Categories(ctx context.Context, params CatalogListParams) (*CatalogCategoryPage, error) {
+	request := s.api.CatalogsAPI.ListCatalogCategories(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.ParentID > 0 {
+		request = request.ParentId(params.ParentID)
+	}
+	if params.Platform != "" {
+		request = request.Platform(params.Platform)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllCategories yields all the categories, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllCategories(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogCategory, error] {
+	return paginate(func(cursor string) ([]CatalogCategory, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Categories(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// Category reads one category by its identifier.
+func (s *CatalogsService) Category(ctx context.Context, id int64) (*CatalogCategory, error) {
+	value, response, err := s.api.CatalogsAPI.GetCatalogCategory(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// CategoryFields reads what an item of a category is filled with: its size groups, enumerated and text fields, measurements.
+func (s *CatalogsService) CategoryFields(ctx context.Context, id int64) (*CatalogCategoryFields, error) {
+	value, response, err := s.api.CatalogsAPI.GetCatalogCategoryFields(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// Brands reads one page of brands, by identifier or, with params.Q, by name.
+func (s *CatalogsService) Brands(ctx context.Context, params CatalogListParams) (*CatalogBrandPage, error) {
+	request := s.api.CatalogsAPI.ListCatalogBrands(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.Q != "" {
+		request = request.Q(params.Q)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllBrands yields all the brands, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllBrands(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogBrand, error] {
+	return paginate(func(cursor string) ([]CatalogBrand, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Brands(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// Sizes reads one page of sizes, each with its size group; params.CategoryID keeps those of one category.
+func (s *CatalogsService) Sizes(ctx context.Context, params CatalogListParams) (*CatalogSizePage, error) {
+	request := s.api.CatalogsAPI.ListCatalogSizes(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.CategoryID > 0 {
+		request = request.CategoryId(params.CategoryID)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllSizes yields all the sizes, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllSizes(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogSize, error] {
+	return paginate(func(cursor string) ([]CatalogSize, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Sizes(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// Colors reads one page of colors; params.CategoryID keeps those of one category.
+func (s *CatalogsService) Colors(ctx context.Context, params CatalogListParams) (*CatalogValuePage, error) {
+	request := s.api.CatalogsAPI.ListCatalogColors(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.CategoryID > 0 {
+		request = request.CategoryId(params.CategoryID)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllColors yields all the colors, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllColors(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogValue, error] {
+	return paginate(func(cursor string) ([]CatalogValue, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Colors(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// Conditions reads one page of conditions; params.CategoryID keeps those of one category.
+func (s *CatalogsService) Conditions(ctx context.Context, params CatalogListParams) (*CatalogValuePage, error) {
+	request := s.api.CatalogsAPI.ListCatalogConditions(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.CategoryID > 0 {
+		request = request.CategoryId(params.CategoryID)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllConditions yields all the conditions, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllConditions(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogValue, error] {
+	return paginate(func(cursor string) ([]CatalogValue, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Conditions(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// PackageSizes reads one page of package sizes; params.CategoryID keeps those of one category.
+func (s *CatalogsService) PackageSizes(ctx context.Context, params CatalogListParams) (*CatalogValuePage, error) {
+	request := s.api.CatalogsAPI.ListCatalogPackageSizes(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.CategoryID > 0 {
+		request = request.CategoryId(params.CategoryID)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllPackageSizes yields all the package sizes, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllPackageSizes(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogValue, error] {
+	return paginate(func(cursor string) ([]CatalogValue, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.PackageSizes(ctx, page)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.Data, result.NextCursor.Get(), nil
+	})
+}
+
+// Materials reads one page of materials; params.CategoryID keeps those of one category.
+func (s *CatalogsService) Materials(ctx context.Context, params CatalogListParams) (*CatalogValuePage, error) {
+	request := s.api.CatalogsAPI.ListCatalogMaterials(ctx)
+	if params.Limit > 0 {
+		request = request.Limit(params.Limit)
+	}
+	if params.Cursor != "" {
+		request = request.Cursor(params.Cursor)
+	}
+	if params.CategoryID > 0 {
+		request = request.CategoryId(params.CategoryID)
+	}
+	value, response, err := request.Execute()
+	return result(value, response, err)
+}
+
+// AllMaterials yields all the materials, page after page, with the same filters (params.Cursor is ignored).
+func (s *CatalogsService) AllMaterials(ctx context.Context, params CatalogListParams) iter.Seq2[CatalogValue, error] {
+	return paginate(func(cursor string) ([]CatalogValue, *string, error) {
+		page := params
+		page.Cursor = cursor
+		result, err := s.Materials(ctx, page)
 		if err != nil {
 			return nil, nil, err
 		}

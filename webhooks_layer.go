@@ -30,8 +30,9 @@ func (s *WebhooksService) CreateEndpoint(ctx context.Context, body WebhookEndpoi
 	return result(value, response, err)
 }
 
-// UpdateEndpoint changes the given fields of an endpoint (a JSON merge patch: the fields left out are kept; an
-// explicit null description clears it). Status "enabled" re-enables a disabled endpoint and resets its health.
+// UpdateEndpoint changes the given fields of an endpoint (a JSON merge patch: the fields left out are kept;
+// body.SetDescriptionNil() sends an explicit null, which clears the description). Status "enabled" re-enables a
+// disabled endpoint and resets its health.
 func (s *WebhooksService) UpdateEndpoint(ctx context.Context, id string, body WebhookEndpointUpdateRequest) (*WebhookEndpoint, error) {
 	value, response, err := s.api.WebhooksAPI.UpdateWebhookEndpoint(ctx, id).WebhookEndpointUpdateRequest(body).Execute()
 	return result(value, response, err)
@@ -59,7 +60,8 @@ func (s *WebhooksService) RotateSecret(ctx context.Context, id string, body Webh
 	return result(value, response, err)
 }
 
-// Test sends a webhook.test event to the endpoint now and returns how it answered.
+// Test sends a webhook.test event to the endpoint now and returns how it answered. A test is never replayed: a retry
+// after a gateway error or a network error may send the receiver another webhook.test event.
 func (s *WebhooksService) Test(ctx context.Context, id string) (*WebhookTestResult, error) {
 	value, response, err := s.api.WebhooksAPI.TestWebhookEndpoint(ctx, id).Execute()
 	return result(value, response, err)

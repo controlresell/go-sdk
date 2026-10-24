@@ -800,3 +800,28 @@ func TestWebhooksTestIsReplayedAfterAFailedDial(t *testing.T) {
 		t.Fatalf("%v %d", err, transport.calls)
 	}
 }
+
+type headerSpy struct{ header http.Header }
+
+func (h *headerSpy) RoundTrip(r *http.Request) (*http.Response, error) {
+	h.header = r.Header.Clone()
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"success":true,"durationMs":1}`))}, nil
+}
+
+func TestWebhooksTestKeyIsNotSeenByNetHTTPAsAReplayMarker(t *testing.T) {
+	spy := &headerSpy{}
+	c, err := controlresell.NewClient(
+		controlresell.WithAPIKey(key),
+		controlresell.WithBaseURL("http://api.test"),
+		controlresell.WithHTTPClient(&http.Client{Transport: spy}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Webhooks.Test(context.Background(), "e-1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(spy.header["Idempotency-Key"]) != 0 || len(spy.header["idempotency-key"]) != 1 {
+		t.Fatalf("%v", spy.header)
+	}
+}

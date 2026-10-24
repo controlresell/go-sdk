@@ -2,6 +2,7 @@ package controlresell
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -56,7 +58,14 @@ type retryTransport struct {
 func (t *retryTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	if request.Method == http.MethodPost && request.Header.Get(IdempotencyKeyHeader) == "" {
 		request = request.Clone(request.Context())
-		request.Header.Set(IdempotencyKeyHeader, newKey())
+		if isWebhookTest(request) {
+			// net/http replays by itself, on a reused connection the server closed, a POST that carries an
+			// Idempotency-Key. The API ignores the key of a test, so it is sent under a non-canonical name, which
+			// the server reads all the same but net/http does not see.
+			request.Header[strings.ToLower(IdempotencyKeyHeader)] = []string{newKey()}
+		} else {
+			request.Header.Set(IdempotencyKeyHeader, newKey())
+		}
 	}
 	replayable := !isWebhookTest(request)
 	for attempt := 0; ; attempt++ {
@@ -107,7 +116,7 @@ func isWebhookTest(request *http.Request) bool {
 // failedBeforeSending is true for an error raised while connecting: nothing reached the server.
 func failedBeforeSending(err error) bool {
 	var op *net.OpError
-	return errors.As(err, &op) && op.Op == "dial"
+	return errors.As(err, &op) && op.Op == "dial" && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded)
 }
 
 func shouldRetry(response *http.Response) bool {

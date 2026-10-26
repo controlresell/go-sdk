@@ -4,10 +4,10 @@ Go client for the [ControlResell](https://controlresell.com) public API (Go 1.23
 
 ## Install
 
-From the 0.1.0 release (Git tag `v0.1.0`):
+From the 1.0.0 release (Git tag `v1.0.0`):
 
 ```sh
-go get github.com/controlresell/go-sdk@v0.1.0
+go get github.com/controlresell/go-sdk@v1.0.0
 ```
 
 Versions are Git tags; see the [releases page](https://github.com/controlresell/go-sdk/releases) for the available ones.

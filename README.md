@@ -2,6 +2,17 @@
 
 Go client for the [ControlResell](https://controlresell.com) public API (Go 1.23+).
 
+## Install
+
+From the 0.1.0 release (Git tag `v0.1.0`):
+
+```sh
+go get github.com/controlresell/go-sdk@v0.1.0
+```
+
+Versions are Git tags; see the [releases page](https://github.com/controlresell/go-sdk/releases) for the available ones.
+
+
 ```go
 import controlresell "github.com/controlresell/go-sdk"
 
@@ -58,4 +69,4 @@ Retries (rate limits, 502/503/504, network errors), `Idempotency-Key` on every `
 go test ./...
 ```
 
-Not published yet (no version tag). Licensed under the Apache License 2.0.
+Licensed under the Apache License 2.0.

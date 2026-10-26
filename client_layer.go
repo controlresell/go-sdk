@@ -10,7 +10,7 @@ import (
 )
 
 // Version is the version of this SDK.
-const Version = "0.1.0"
+const Version = "1.0.0"
 
 // DefaultBaseURL is the production address of the API.
 const DefaultBaseURL = "https://api.controlresell.com"

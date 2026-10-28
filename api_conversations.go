@@ -506,7 +506,7 @@ func (r ApiListConversationsRequest) ItemId(itemId int64) ApiListConversationsRe
 	return r
 }
 
-// Only the conversations with at least one offer currently at this status: &#x60;PENDING&#x60;, &#x60;ACCEPTED&#x60;, &#x60;REJECTED&#x60; or &#x60;CANCELED&#x60;; with &#x60;itemId&#x60;, an offer on that item.
+// Only the conversations with at least one offer currently at this status: &#x60;PENDING&#x60;, &#x60;ACCEPTED&#x60;, &#x60;REJECTED&#x60; or &#x60;CANCELED&#x60;; with &#x60;itemId&#x60;, an offer on that item (approximate for an offer with no transaction of its own: the conversation&#39;s transactions then carry the item).
 func (r ApiListConversationsRequest) OfferStatus(offerStatus string) ApiListConversationsRequest {
 	r.offerStatus = &offerStatus
 	return r
@@ -519,7 +519,7 @@ func (r ApiListConversationsRequest) Execute() (*ConversationPage, *http.Respons
 /*
 ListConversations List the seller's conversations
 
-The conversations with buyers on the seller's marketplace accounts, latest activity first, one page at a time. A conversation that receives a message while you read moves to the head: read again from the first page to see it. Pass the `nextCursor` of a page as `cursor` with the same filters (a cursor reused with other filters is an `invalid_cursor`). `from` and `to` go straight to a period of the last message: `from` is inclusive, `to` exclusive, and the period is read page by page like the whole list. `buyerId`, `itemId` and `offerStatus` combine with the other filters (AND): `buyerId` is the buyer's identifier on the marketplace (a conversation's `buyerId`); `itemId` keeps the conversations about the item, through their transactions on the marketplace (a conversation the marketplace ties to no listing of the item is not found); `offerStatus` keeps those with at least one offer currently at that status, and with `itemId` that same offer is on the item. An `itemId` that is not one of the seller's items answers an empty page. Requires `conversations:read`.
+The conversations with buyers on the seller's marketplace accounts, latest activity first, one page at a time. A conversation that receives a message while you read moves to the head: read again from the first page to see it. Pass the `nextCursor` of a page as `cursor` with the same filters (a cursor reused with other filters is an `invalid_cursor`). `from` and `to` go straight to a period of the last message: `from` is inclusive, `to` exclusive, and the period is read page by page like the whole list. `buyerId`, `itemId` and `offerStatus` combine with the other filters (AND): `buyerId` is the buyer's identifier on the marketplace (a conversation's `buyerId`); `itemId` keeps the conversations about the item, through their transactions on the marketplace (a conversation the marketplace ties to no listing of the item is not found); `offerStatus` keeps those with at least one offer currently at that status; with `itemId`, that offer is on the item through its own transaction, and an offer with no transaction of its own counts when the conversation's transactions carry the item (so the result is approximate for such an offer: it can be an offer about another item of the same conversation). An `itemId` that is not one of the seller's items answers an empty page. Requires `conversations:read`.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @return ApiListConversationsRequest

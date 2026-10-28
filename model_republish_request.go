@@ -12,6 +12,7 @@ package controlresell
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // checks if the RepublishRequest type satisfies the MappedNullable interface at compile time
@@ -23,6 +24,7 @@ type RepublishRequest struct {
 	PriceDrop NullablePriceDropRequest `json:"priceDrop,omitempty"`
 	PriceVariation NullableString `json:"priceVariation,omitempty"`
 	AllowIfDeleted NullableBool `json:"allowIfDeleted,omitempty"`
+	ScheduledAt NullableTime `json:"scheduledAt,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -204,6 +206,48 @@ func (o *RepublishRequest) UnsetAllowIfDeleted() {
 	o.AllowIfDeleted.Unset()
 }
 
+// GetScheduledAt returns the ScheduledAt field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *RepublishRequest) GetScheduledAt() time.Time {
+	if o == nil || IsNil(o.ScheduledAt.Get()) {
+		var ret time.Time
+		return ret
+	}
+	return *o.ScheduledAt.Get()
+}
+
+// GetScheduledAtOk returns a tuple with the ScheduledAt field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *RepublishRequest) GetScheduledAtOk() (*time.Time, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.ScheduledAt.Get(), o.ScheduledAt.IsSet()
+}
+
+// HasScheduledAt returns a boolean if a field has been set.
+func (o *RepublishRequest) HasScheduledAt() bool {
+	if o != nil && o.ScheduledAt.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetScheduledAt gets a reference to the given NullableTime and assigns it to the ScheduledAt field.
+func (o *RepublishRequest) SetScheduledAt(v time.Time) {
+	o.ScheduledAt.Set(&v)
+}
+// SetScheduledAtNil sets the value for ScheduledAt to be an explicit nil
+func (o *RepublishRequest) SetScheduledAtNil() {
+	o.ScheduledAt.Set(nil)
+}
+
+// UnsetScheduledAt ensures that no value is present for ScheduledAt, not even an explicit nil
+func (o *RepublishRequest) UnsetScheduledAt() {
+	o.ScheduledAt.Unset()
+}
+
 func (o RepublishRequest) MarshalJSON() ([]byte, error) {
 	toSerialize,err := o.ToMap()
 	if err != nil {
@@ -225,6 +269,9 @@ func (o RepublishRequest) ToMap() (map[string]interface{}, error) {
 	}
 	if o.AllowIfDeleted.IsSet() {
 		toSerialize["allowIfDeleted"] = o.AllowIfDeleted.Get()
+	}
+	if o.ScheduledAt.IsSet() {
+		toSerialize["scheduledAt"] = o.ScheduledAt.Get()
 	}
 
 	for key, value := range o.AdditionalProperties {
@@ -252,6 +299,7 @@ func (o *RepublishRequest) UnmarshalJSON(data []byte) (err error) {
 		delete(additionalProperties, "priceDrop")
 		delete(additionalProperties, "priceVariation")
 		delete(additionalProperties, "allowIfDeleted")
+		delete(additionalProperties, "scheduledAt")
 		o.AdditionalProperties = additionalProperties
 	}
 

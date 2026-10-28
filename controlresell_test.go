@@ -887,7 +887,7 @@ func TestFilesRegisterGetAndUpload(t *testing.T) {
 	if err != nil || upload.Id != "f1" {
 		t.Fatalf("%v %v", upload, err)
 	}
-	if registered != `{"contentType":"image/jpeg","filename":"a.jpg","size":3}` { // the generated model marshals its keys sorted
+	if strings.TrimSpace(registered) != `{"contentType":"image/jpeg","filename":"a.jpg","size":3}` { // the generated model marshals its keys sorted
 		t.Fatalf("registered %s", registered)
 	}
 	if puts != 2 || putAuth != "" || putType != "image/jpeg" || putBody != "abc" {

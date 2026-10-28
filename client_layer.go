@@ -1,8 +1,10 @@
 package controlresell
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"net/http"
 	"os"
@@ -61,6 +63,8 @@ type Client struct {
 	Orders *OrdersService
 	// Customers are the other parties of the seller's sales and purchases.
 	Customers *CustomersService
+	// Files are the photos of the seller's library: register one, send its bytes, read it.
+	Files *FilesService
 	// Favorites are the buyers who put the seller's listings in their favorites.
 	Favorites *FavoritesService
 	// Catalogs are the identifiers an item is written with: categories, brands, sizes, colors...
@@ -107,6 +111,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		Conversations: &ConversationsService{api},
 		Orders:        &OrdersService{api},
 		Customers:     &CustomersService{api},
+		Files:         &FilesService{api},
 		Favorites:     &FavoritesService{api},
 		Catalogs:      &CatalogsService{api},
 		Webhooks:      &WebhooksService{api},
@@ -803,6 +808,53 @@ func result[T any](value *T, response *http.Response, err error) (*T, error) {
 		return nil, convert(response, err)
 	}
 	return value, nil
+}
+
+// FilesService registers the photos of the seller's library (needs items:write, items:read to read one). Register a file,
+// send its bytes to the returned address, then put its identifier in PhotoIds of an item.
+type FilesService struct{ api *APIClient }
+
+// Register records a file (jpeg, png, webp, heic or heif, at most 20 MiB) and returns its identifier and the address
+// where to PUT its bytes within 30 minutes. opts may set the Idempotency-Key.
+func (s *FilesService) Register(ctx context.Context, body FileUploadRequest, opts ...WriteOption) (*FileUpload, error) {
+	value, response, err := s.api.FilesAPI.UploadFile(ctx).FileUploadRequest(body).IdempotencyKey(keyOf(opts)).Execute()
+	return result(value, response, err)
+}
+
+// Get reads one file of the library, with a signed link to read it; its Status is PENDING until its bytes are stored.
+func (s *FilesService) Get(ctx context.Context, id string) (*File, error) {
+	value, response, err := s.api.FilesAPI.GetFile(ctx, id).Execute()
+	return result(value, response, err)
+}
+
+// Upload registers a file and sends its bytes (an HTTP PUT with the same Content-Type and no Authorization header),
+// and returns the registration: put its Id in PhotoIds. The PUT is retried like any call; a refused one is a typed
+// error (the file stays PENDING).
+func (s *FilesService) Upload(ctx context.Context, filename, contentType string, data []byte, opts ...WriteOption) (*FileUpload, error) {
+	upload, err := s.Register(ctx, *NewFileUploadRequest(filename, contentType, int64(len(data))), opts...)
+	if err != nil {
+		return nil, err
+	}
+	if upload.UploadUrl == "" {
+		return nil, errors.New("controlresell: the API returned no upload address for file " + upload.Id)
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPut, upload.UploadUrl, bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", contentType)
+	request.Header.Set("User-Agent", s.api.GetConfig().UserAgent)
+	response, err := s.api.GetConfig().HTTPClient.Do(request)
+	if err != nil {
+		return nil, convert(response, err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		return nil, errorOf(response.StatusCode, body, response.Header)
+	}
+	_, _ = io.Copy(io.Discard, response.Body)
+	return upload, nil
 }
 
 // FavoritesService reads the buyers who put the seller's listings in their favorites (needs the items:read scope).

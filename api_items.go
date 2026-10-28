@@ -482,7 +482,7 @@ func (r ApiDropItemPriceRequest) Execute() (*ScheduledAction, *http.Response, er
 /*
 DropItemPrice Lower the price of an item's listings
 
-Schedules a price drop of the item's existing listings, now, like the price drop of the app: the listings are updated, not republished. `value` is what is removed from each listing's current price, never the new price. Without `accountIds`, every account the item is online on. Requires `items:write` and an `Idempotency-Key`.
+Schedules a price drop of the item's existing listings, now or at `scheduledAt` (at most 30 days ahead), like the price drop of the app: the listings are updated, not republished. `value` is what is removed from each listing's current price, never the new price. Without `accountIds`, every account the item is online on. Requires `items:write` and an `Idempotency-Key`.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @param id The item's identifier, a number.
@@ -1324,7 +1324,7 @@ func (r ApiPublishItemRequest) Execute() (*ScheduledAction, *http.Response, erro
 /*
 PublishItem Publish an item on the seller's accounts
 
-Schedules the publication of one item of the seller's stock on the given marketplace accounts, now. The publication runs on the account's browser: read its result on `GET /items/{id}/listings`. To cross-list an item ("list it on eBay"), call this route with that account: this API never relays a marketplace's own API. Publishing one item on several accounts of the same marketplace risks a strike from it: name only the accounts you mean. Requires `items:write` and an `Idempotency-Key`.
+Schedules the publication of one item of the seller's stock on the given marketplace accounts, now or at `scheduledAt` (at most 30 days ahead). The publication runs on the account's browser: read its result on `GET /items/{id}/listings`. To cross-list an item ("list it on eBay"), call this route with that account: this API never relays a marketplace's own API. Publishing one item on several accounts of the same marketplace risks a strike from it: name only the accounts you mean. Requires `items:write` and an `Idempotency-Key`.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @param id The item's identifier, a number.
@@ -1573,7 +1573,7 @@ func (r ApiRepublishItemRequest) Execute() (*ScheduledAction, *http.Response, er
 /*
 RepublishItem Republish an item on the seller's accounts
 
-Schedules the republication of one item of the seller's stock, now, exactly as the app and the MCP tool `republish_items` do: ControlResell deletes the listing and publishes it again from the item it holds, with the same safeguards (republication pace, publication guards). eBay, Shopify and Etsy do not republish: their accounts are refused (`republish_not_supported`). Without `accountIds`, every account the item is listed on. The republication runs on the account's browser: read its result on `GET /items/{id}/listings`.
+Schedules the republication of one item of the seller's stock, now or at `scheduledAt` (at most 30 days ahead), exactly as the app and the MCP tool `republish_items` do: ControlResell deletes the listing and publishes it again from the item it holds, with the same safeguards (republication pace, publication guards). eBay, Shopify and Etsy do not republish: their accounts are refused (`republish_not_supported`). Without `accountIds`, every account the item is listed on. The republication runs on the account's browser: read its result on `GET /items/{id}/listings`.
 
 This API never relays a marketplace's own API (Vinted, eBay…): every write runs a ControlResell use case on an item of the seller's stock. To cross-list an item on another account or marketplace ("list it on eBay"), call `POST /items/{id}/publish` with that account. Requires `items:write` and an `Idempotency-Key`; costs 5 units of the rate limit.
 

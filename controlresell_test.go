@@ -307,6 +307,40 @@ func TestPriceDropPostsToThePriceDropRoute(t *testing.T) {
 	}
 }
 
+func TestPublishPriceDropAndRepublishSendScheduledAt(t *testing.T) {
+	var bodies []string
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(raw))
+		reply(w, 202, action)
+	})
+	at := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	publish := controlresell.PublishRequest{AccountIds: []string{account}}
+	publish.SetScheduledAt(at)
+	drop := controlresell.PriceDropRequest{Type: "PERCENT", Value: "10"}
+	drop.SetScheduledAt(at)
+	republish := controlresell.RepublishRequest{}
+	republish.SetScheduledAt(at)
+	ctx := context.Background()
+	if _, err := c.Items.Publish(ctx, 7, publish); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Items.PriceDrop(ctx, 7, drop); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Items.Republish(ctx, 7, republish); err != nil {
+		t.Fatal(err)
+	}
+	if len(bodies) != 3 {
+		t.Fatalf("%v", bodies)
+	}
+	for _, body := range bodies {
+		if !strings.Contains(body, `"scheduledAt":"2026-11-02T10:00:00Z"`) {
+			t.Fatalf("%s", body)
+		}
+	}
+}
+
 func TestDeleteResolvesOn204AndReturnsATypedErrorOn409(t *testing.T) {
 	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
 		if n == 1 {

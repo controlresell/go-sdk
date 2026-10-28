@@ -12,6 +12,7 @@ package controlresell
 
 import (
 	"encoding/json"
+	"time"
 	"fmt"
 )
 
@@ -22,6 +23,7 @@ var _ MappedNullable = &PublishRequest{}
 type PublishRequest struct {
 	AccountIds []string `json:"accountIds"`
 	CancelBeforeProceeding NullableBool `json:"cancelBeforeProceeding,omitempty"`
+	ScheduledAt NullableTime `json:"scheduledAt,omitempty"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -111,6 +113,48 @@ func (o *PublishRequest) UnsetCancelBeforeProceeding() {
 	o.CancelBeforeProceeding.Unset()
 }
 
+// GetScheduledAt returns the ScheduledAt field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *PublishRequest) GetScheduledAt() time.Time {
+	if o == nil || IsNil(o.ScheduledAt.Get()) {
+		var ret time.Time
+		return ret
+	}
+	return *o.ScheduledAt.Get()
+}
+
+// GetScheduledAtOk returns a tuple with the ScheduledAt field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *PublishRequest) GetScheduledAtOk() (*time.Time, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.ScheduledAt.Get(), o.ScheduledAt.IsSet()
+}
+
+// HasScheduledAt returns a boolean if a field has been set.
+func (o *PublishRequest) HasScheduledAt() bool {
+	if o != nil && o.ScheduledAt.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetScheduledAt gets a reference to the given NullableTime and assigns it to the ScheduledAt field.
+func (o *PublishRequest) SetScheduledAt(v time.Time) {
+	o.ScheduledAt.Set(&v)
+}
+// SetScheduledAtNil sets the value for ScheduledAt to be an explicit nil
+func (o *PublishRequest) SetScheduledAtNil() {
+	o.ScheduledAt.Set(nil)
+}
+
+// UnsetScheduledAt ensures that no value is present for ScheduledAt, not even an explicit nil
+func (o *PublishRequest) UnsetScheduledAt() {
+	o.ScheduledAt.Unset()
+}
+
 func (o PublishRequest) MarshalJSON() ([]byte, error) {
 	toSerialize,err := o.ToMap()
 	if err != nil {
@@ -124,6 +168,9 @@ func (o PublishRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize["accountIds"] = o.AccountIds
 	if o.CancelBeforeProceeding.IsSet() {
 		toSerialize["cancelBeforeProceeding"] = o.CancelBeforeProceeding.Get()
+	}
+	if o.ScheduledAt.IsSet() {
+		toSerialize["scheduledAt"] = o.ScheduledAt.Get()
 	}
 
 	for key, value := range o.AdditionalProperties {
@@ -170,6 +217,7 @@ func (o *PublishRequest) UnmarshalJSON(data []byte) (err error) {
 	if err = json.Unmarshal(data, &additionalProperties); err == nil {
 		delete(additionalProperties, "accountIds")
 		delete(additionalProperties, "cancelBeforeProceeding")
+		delete(additionalProperties, "scheduledAt")
 		o.AdditionalProperties = additionalProperties
 	}
 

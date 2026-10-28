@@ -49,6 +49,9 @@ conversations, err := client.Conversations.List(ctx, controlresell.ConversationL
 // Writes (API key with items:write / conversations:write); controlresell.WithIdempotencyKey("...") chooses the key.
 created, err := client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket"}) // Items.Update(ctx, id, controlresell.ItemUpdateRequest{...}) patches
 scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{AccountIds: []string{accountID}})
+request := controlresell.PublishRequest{AccountIds: []string{accountID}}
+request.SetScheduledAt(time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)) // Publish, PriceDrop and Republish take an optional ScheduledAt, at most 30 days ahead; without it they run now
+scheduled, err = client.Items.Publish(ctx, 42, request)
 message, err := client.Conversations.SendMessage(ctx, conversationID, controlresell.SendMessageRequest{Text: "Hello!"})
 
 // Webhooks (webhooks:read / webhooks:write): Endpoints, Endpoint, CreateEndpoint, UpdateEndpoint, DeleteEndpoint, Secret,

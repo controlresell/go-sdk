@@ -59,6 +59,8 @@ type APIClient struct {
 
 	FavoritesAPI *FavoritesAPIService
 
+	FilesAPI *FilesAPIService
+
 	ItemsAPI *ItemsAPIService
 
 	MeAPI *MeAPIService
@@ -89,6 +91,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.ConversationsAPI = (*ConversationsAPIService)(&c.common)
 	c.CustomersAPI = (*CustomersAPIService)(&c.common)
 	c.FavoritesAPI = (*FavoritesAPIService)(&c.common)
+	c.FilesAPI = (*FilesAPIService)(&c.common)
 	c.ItemsAPI = (*ItemsAPIService)(&c.common)
 	c.MeAPI = (*MeAPIService)(&c.common)
 	c.OrdersAPI = (*OrdersAPIService)(&c.common)

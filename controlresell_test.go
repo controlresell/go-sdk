@@ -859,3 +859,60 @@ func TestWebhooksTestKeyIsNotSeenByNetHTTPAsAReplayMarker(t *testing.T) {
 		t.Fatalf("%v", spy.header)
 	}
 }
+
+func TestFilesRegisterGetAndUpload(t *testing.T) {
+	var putAuth, putType, putBody, registered string
+	var puts int
+	s, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPut:
+			puts++
+			body, _ := io.ReadAll(r.Body)
+			putAuth, putType, putBody = r.Header.Get("Authorization"), r.Header.Get("Content-Type"), string(body)
+			if puts == 1 {
+				reply(w, 503, "")
+				return
+			}
+			reply(w, 200, "")
+		case r.Method == http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			registered = string(body)
+			reply(w, 201, `{"id":"f1","uploadUrl":"http://`+r.Host+`/put","unknownField":1}`)
+		default:
+			reply(w, 200, `{"id":"f1","status":"CONFIRMED","url":"https://s3.test/get","createdAt":"2026-10-28T10:00:00Z"}`)
+		}
+	})
+	ctx := context.Background()
+	upload, err := c.Files.Upload(ctx, "a.jpg", "image/jpeg", []byte("abc"))
+	if err != nil || upload.Id != "f1" {
+		t.Fatalf("%v %v", upload, err)
+	}
+	if registered != `{"contentType":"image/jpeg","filename":"a.jpg","size":3}` { // the generated model marshals its keys sorted
+		t.Fatalf("registered %s", registered)
+	}
+	if puts != 2 || putAuth != "" || putType != "image/jpeg" || putBody != "abc" {
+		t.Fatalf("puts=%d auth=%q type=%q body=%q", puts, putAuth, putType, putBody)
+	}
+	if s.calls[0].header.Get(controlresell.IdempotencyKeyHeader) == "" {
+		t.Fatal("no Idempotency-Key on the registration")
+	}
+	file, err := c.Files.Get(ctx, "f1")
+	if err != nil || file.GetStatus() != "CONFIRMED" {
+		t.Fatalf("%v %v", file, err)
+	}
+}
+
+func TestFilesUploadReturnsATypedErrorWhenThePutIsRefused(t *testing.T) {
+	_, c := client(t, func(n int, w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			reply(w, 403, "")
+			return
+		}
+		reply(w, 201, `{"id":"f1","uploadUrl":"http://`+r.Host+`/put"}`)
+	})
+	_, err := c.Files.Upload(context.Background(), "a.jpg", "image/jpeg", []byte("abc"))
+	var denied *controlresell.PermissionDeniedError
+	if !errors.As(err, &denied) {
+		t.Fatalf("%T %v", err, err)
+	}
+}

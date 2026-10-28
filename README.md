@@ -52,6 +52,8 @@ scheduled, err := client.Items.Publish(ctx, 42, controlresell.PublishRequest{Acc
 request := controlresell.PublishRequest{AccountIds: []string{accountID}}
 request.SetScheduledAt(time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)) // Publish, PriceDrop and Republish take an optional ScheduledAt, at most 30 days ahead; without it they run now
 scheduled, err = client.Items.Publish(ctx, 42, request)
+photo, err := client.Files.Upload(ctx, "jacket.jpg", "image/jpeg", jpegBytes) // registers the photo and PUTs its bytes; Files.Register only registers it, Files.Get reads it (Status is PENDING until its bytes are stored)
+created, err = client.Items.Create(ctx, controlresell.ItemCreateRequest{Name: "Jacket", PhotoIds: []string{photo.Id}})
 message, err := client.Conversations.SendMessage(ctx, conversationID, controlresell.SendMessageRequest{Text: "Hello!"})
 
 // Webhooks (webhooks:read / webhooks:write): Endpoints, Endpoint, CreateEndpoint, UpdateEndpoint, DeleteEndpoint, Secret,

@@ -835,6 +835,9 @@ func (s *FilesService) Upload(ctx context.Context, filename, contentType string,
 	if err != nil {
 		return nil, err
 	}
+	if upload.UploadUrl == "" {
+		return nil, errors.New("controlresell: the API returned no upload address for file " + upload.Id)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPut, upload.UploadUrl, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -846,10 +849,11 @@ func (s *FilesService) Upload(ctx context.Context, filename, contentType string,
 		return nil, convert(response, err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode >= 400 {
+	if response.StatusCode/100 != 2 {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 		return nil, errorOf(response.StatusCode, body, response.Header)
 	}
+	_, _ = io.Copy(io.Discard, response.Body)
 	return upload, nil
 }
 
